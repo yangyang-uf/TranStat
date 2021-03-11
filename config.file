@@ -1,0 +1,312 @@
+# input-path
+/Users/jack/Desktop/wuhan/jun14_final/ts_jun23/test/
+
+# output-path
+/Users/jack/Desktop/wuhan/jun14_final/ts_jun23/test/
+
+# min-max-days-and-probs-of-incubation-period
+1
+1  21
+0.05696826 0.1088634 0.1436833 0.1564735 0.1485944 0.1260697 0.09677176 0.06770082 0.04336345 0.02550532 0.01380353 0.006883501 0.003166047 0.001344062 0.0005269066 0.000190816 6.385141e-05 1.974576e-05 5.643787e-06 1.491031e-06 3.64109e-07
+
+# primary-lower-upper-bounds-and-probs-of-infectious-days-relative-to-symptom-onset-day
+1
+-5  7
+0.10 0.40 0.70 1.00 1.00 1.00 1.00 1.00 0.80 0.60 0.40 0.20 0.10
+
+
+# number-of-c2p-transmission-probabilities
+14
+
+
+# number-of-p2p-transmission-probabilities
+1
+
+
+# number-of-pathogenicity-groups
+0
+
+
+# number-of-preseason-immunity-groups
+0
+
+
+# number-of-time-independent-covariates
+11
+
+
+# number-of-time-dependent-covariates
+3
+
+# illness-period-as-a-time-dependent-covariate-for-infectivity
+1:1
+
+# covariates-affecting-susceptibility-for-c2p-transmission
+6:1 2 3 6 13 14
+
+# covariates-affecting-susceptibility-for-p2p-transmission
+4:1 2 3 6
+
+# covariates-affecting-infectiousness-for-p2p-transmission
+7:1 2 3 4 10 11 12
+
+# interactions-for-p2p-transmission
+0:
+
+# covariates-affecting-pathogenicity
+0:
+
+# covariates-affecting-preseason-immunity
+0:
+
+# equal-parameters
+28:
+1:1
+1:2
+1:3
+1:4
+1:5
+1:6
+1:7
+1:8
+1:9
+1:10
+1:11
+1:12
+1:13
+1:14
+1:15
+2:16 22
+2:17 23
+2:18 24
+2:19 25
+1:20
+1:21
+1:26
+1:27
+1:28
+1:29
+1:30
+1:31
+1:32
+
+
+
+# fixed-parameters
+0:
+
+# perform-simulation
+0
+
+# proportion-with-ambiguity-about-preimmunity-and-escape-status
+0
+
+# optimization-choice
+1
+
+# converge-criteria
+1:
+b1    1.0e-3
+b2    1.0e-3
+b3    1.0e-3
+b4    1.0e-3
+b5    1.0e-3
+b6    1.0e-3
+b7    1.0e-3
+b8    1.0e-3
+b9    1.0e-3
+b10    1.0e-3
+b11    1.0e-3
+b12    1.0e-3
+b13    1.0e-3
+b14    1.0e-3
+p    1.0e-3
+OR1  1.0e-3
+OR2  1.0e-3
+OR3  1.0e-3
+OR4  1.0e-3
+OR5  1.0e-3
+OR6  1.0e-3
+OR7  1.0e-3
+OR8  1.0e-3
+OR9  1.0e-3
+OR10  1.0e-3
+OR11  1.0e-3
+OR12  1.0e-3
+OR13  1.0e-3
+
+
+# initial-estimates
+1:1
+b1    1.0e-3
+b2    1.0e-3
+b3    1.0e-3
+b4    1.0e-3
+b5    1.0e-3
+b6    1.0e-3
+b7    1.0e-3
+b8    1.0e-3
+b9    1.0e-3
+b10    1.0e-3
+b11    1.0e-3
+b12    1.0e-3
+b13    1.0e-3
+b14    1.0e-3
+p     1.0e-3
+OR1   1.0
+OR2   1.0
+OR3   1.0
+OR4   1.0
+OR5   1.0
+OR6   1.0
+OR7   1.0
+OR8   1.0
+OR9   1.0
+OR10  1.0
+OR11  1.0
+OR12  1.0
+OR13  1.0
+
+
+# search-bounds
+1:
+b1   1.000000e-12  9.000000e-001
+b2   1.000000e-12  9.000000e-001
+b3   1.000000e-12  9.000000e-001
+b4   1.000000e-12  9.000000e-001
+b5   1.000000e-12  9.000000e-001
+b6   1.000000e-12  9.000000e-001
+b7   1.000000e-12  9.000000e-001
+b8   1.000000e-12  9.000000e-001
+b9   1.000000e-12  9.000000e-001
+b10   1.000000e-12  9.000000e-001
+b11   1.000000e-12  9.000000e-001
+b12   1.000000e-12  9.000000e-001
+b13   1.000000e-12  9.000000e-001
+b14   1.000000e-12  9.000000e-001
+p   1.000000e-12  9.000000e-001
+OR1  0.001  100
+OR2  0.001  100
+OR3  0.001  100
+OR4  0.001  100
+OR5  0.001  100
+OR6  0.001  100
+OR7  0.001  100
+OR8  0.001  100
+OR9  0.001  100
+OR10  0.001  100
+OR11  0.001  100
+OR12  0.001  100
+OR13  0.001  100
+
+
+# perform-EM-algorithm
+0
+
+# min-number-of-possible-status-to-use-mcem
+10000
+
+# use-community-specific-weighting
+0
+
+# number-of-base-mcmc-samples
+100
+
+# number-of-burnin-mcmc-samples
+10
+
+# number-of-burnin-mcmc-iterations
+10
+
+# number-of-samplings-for-mc-error
+0
+
+# use-bootstrap-for-mc-error
+0
+
+# do-not-calculate-average-variance-for-mc-error
+1
+
+# check-missingness
+0
+
+# check-mixing
+0
+
+# check-runtime
+0
+
+# relative-infectivity-of-asymptomatic-case-for-simulation
+1
+
+# relative-infectivity-of-asymptomatic-case-for-estimation
+1
+
+# members-share-common-c2p-contact-history-across-communities
+0
+
+# members-share-common-contact-history-within-communities
+0
+
+# automatically-generate-c2p-contact-file
+0
+
+# automatically-generate-p2p-contact-file
+0
+
+# use-c2p-offset
+0
+
+# use-p2p-offset
+0
+
+# adjust-for-selection-bias
+1
+
+# adjust-for-right-censoring
+1
+
+# prefix-index-cases
+1
+
+# epidemic-duration-for-calculating-CPI
+0
+
+# effective-lower-upper-bounds-of-infectious-days-relative-to-symptom-onset-day
+0:
+
+# covariates-for-calculating-SAR-provided
+0:
+
+# multiplier-for-calculating-R0
+0:
+
+# serial-division-of-epidemic-for-calculating-time-varying-R0
+0:
+
+# goodness-of-fit
+1
+
+# perform-statistical-test
+0
+
+# do-not-estimate-variance
+0
+
+# do-not-output-estimates
+0
+
+# simplify-output
+0
+
+# simplify-output-SAR
+0
+
+# simplify-output-R0
+0
+
+# run-transtat-silently
+0
+
+# write-error-log
+0
