@@ -72,7 +72,6 @@ int get_size(FILE *in)
 #include "derivatives.h"
 #include "estimation.h"
 #include "test_cs_hh_improve.h"
-#include "goodness_of_fit.h"
 #include "core.h"
 
 

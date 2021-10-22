@@ -2080,6 +2080,7 @@ end:
    return(error);
 }
   
+#include "goodness_of_fit.h"
 
      
 int estimation(int id_inc, int id_inf, int id_time, double *est, double *logL, MATRIX *var, MATRIX *var_logit)
