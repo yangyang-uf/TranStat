@@ -40,6 +40,7 @@ CFG_PARS get_cfg_pars(FILE *file)
   cfg_pars.simulation = cfg_pars.n_simulation = cfg_pars.EM = 0;
   cfg_pars.SAR_time_dep_lower = cfg_pars.SAR_time_dep_upper = 0;
   cfg_pars.n_R0_multiplier = cfg_pars.R0_divide_by_time = cfg_pars.R0_divide_start = cfg_pars.R0_divide_stop = cfg_pars.R0_window_size = 0;
+  cfg_pars.illness_as_covariate = 0;
   
   cfg_pars.effective_lower_infectious = cfg_pars.effective_upper_infectious = NULL;
   cfg_pars.prob_incubation = cfg_pars.prob_infectious = cfg_pars.converge_criteria = NULL; 
@@ -623,7 +624,6 @@ CFG_PARS get_cfg_pars(FILE *file)
                      fscanf(file,"%d %d", &cfg_pars.R0_divide_start, &cfg_pars.R0_divide_stop);
                   else
                      fscanf(file,"%d %d %d", &cfg_pars.R0_divide_start, &cfg_pars.R0_divide_stop, &cfg_pars.R0_window_size);   
-                  //printf("R0 multiplier=%lf var=%f\n", cfg_pars.R0_multiplier[i], cfg_pars.R0_multiplier_var[i]);
               }
            }
         }   

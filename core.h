@@ -3,7 +3,6 @@
 ////// University of Florida
 
 
-
 int core(int id_inc, int id_inf, int id_time)
 {
   FILE *file;    
@@ -813,7 +812,7 @@ int core(int id_inc, int id_inf, int id_time)
      
 
   n_iter = (cfg_pars.simulation == 1)? cfg_pars.n_simulation : 1;
-  //printf("n_iter=%d\n", n_iter);
+  printf("n_iter=%d\n", n_iter);
   for(ITER=0; ITER<n_iter; ITER++)
   {
    
@@ -919,7 +918,7 @@ int core(int id_inc, int id_inf, int id_time)
            }
         }   
      }
-     count_cases();
+     //count_cases();
      /*file = fopen("check_sim_pop.dat", "w");
      for(i=0; i<p_size; i++)   
      {
@@ -1372,6 +1371,7 @@ int core(int id_inc, int id_inf, int id_time)
      2: error in variance calculating, which means the final estimates may not be valid
      ***********************************************************************************/
      estimation_error_type = estimation(id_inc, id_inf, id_time, est, &log_likelihood, &var, &var_logit);
+     
      if(cfg_pars.write_error_log == 1)
      {      
         sprintf(file_name, "%serror.txt", cfg_pars.path_out);
@@ -1381,7 +1381,7 @@ int core(int id_inc, int id_inf, int id_time)
         fclose(file);
      }
      if(cfg_pars.silent_run == 0)  printf("estimation error type=%d\n", estimation_error_type);
-
+     
      if(estimation_error_type == 0 && cfg_pars.skip_output == 0)
      {
         //printf("check0, serial number=%d\n", serial_number);
@@ -1390,7 +1390,7 @@ int core(int id_inc, int id_inf, int id_time)
            b[k] = est[k];
            lb[k] = logit(b[k]);
            se_lb[k] = sqrt(var_logit.data[k][k]);   
-           se_b[k] = sqrt(var.data[k][k]);  
+           se_b[k] = sqrt(var.data[k][k]);
         }   
         for(k=0; k<n_p_mode; k++)  
         {
@@ -1581,6 +1581,7 @@ int core(int id_inc, int id_inf, int id_time)
            lower_OR_imm[k] = exp(coeff_imm[k] - 1.96 * se_coeff_imm[k]);
            upper_OR_imm[k] = exp(coeff_imm[k] + 1.96 * se_coeff_imm[k]);
         }   
+        //printf("b=%e  p=%e  OR=%e\n", b[0], p[0], OR_p2p[0]);  
 
         sprintf(file_name, "%soutput.txt", cfg_pars.path_out);
         if((file = fopen(file_name, "a")) == NULL)

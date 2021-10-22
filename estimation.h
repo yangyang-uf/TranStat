@@ -958,7 +958,7 @@ int M_step(double *par_effective, double *max_log_L, int optimization_method)
       //}
    }
    
-   printf("number of M-step iterations=%d\n", loop); 
+   if(cfg_pars.silent_run == 0)  printf("number of M-step iterations=%d\n", loop); 
  end:
    (* max_log_L) = log_L;
    deflate_matrix(&diff);
@@ -2079,6 +2079,8 @@ end:
    //free(index);
    return(error);
 }
+  
+
      
 int estimation(int id_inc, int id_inf, int id_time, double *est, double *logL, MATRIX *var, MATRIX *var_logit)
 {
@@ -2465,7 +2467,7 @@ int estimation(int id_inc, int id_inf, int id_time, double *est, double *logL, M
      if(cfg_pars.silent_run == 0)
      {
         printf("\nvar_logit:\n");
-        //fmprintf(var_logit);
+        fmprintf(var_logit);
      }
       
      for(j=0; j<n_par_equiclass; j++)
@@ -2489,7 +2491,7 @@ int estimation(int id_inc, int id_inf, int id_time, double *est, double *logL, M
      if(cfg_pars.silent_run == 0)
      {
         printf("\nvar:\n");
-        //fmprintf(var);
+        fmprintf(var);
      }
   }
   // Goodness of fit

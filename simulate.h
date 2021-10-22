@@ -84,6 +84,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
      for(i=0; i<n_imm_covariate; i++)  coeff_imm[i] = log(est[n_b_mode + n_p_mode + n_u_mode + n_q_mode
                                                     + n_c2p_covariate + n_p2p_covariate + n_pat_covariate + i]);
   }    
+
   c2p_covariate = NULL;
   if(n_c2p_covariate > 0)  
       c2p_covariate = (double *)malloc((size_t) (n_c2p_covariate * sizeof(double)));
@@ -104,7 +105,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
         people[i].day_infection = people[i].day_ill = MISSING;
         people[i].day_infection_lower = people[i].day_infection_upper = MISSING;
         people[i].day_infective_lower = people[i].day_infective_upper = MISSING;
-        if(cfg_pars.illness_as_covariate == 1)
+        if(cfg_pars.n_time_dep_covariate > 0 && cfg_pars.illness_as_covariate == 1)
         {
            j = cfg_pars.illness_covariate_id - 1;
            for(k=0; k<community[h].epi_duration; k++)
@@ -112,12 +113,14 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
         }      
         //Reset time-independent indicators for intervals of infectivity for infected individuals
         //Only applies to the Wuhan housheold study
+        /*
         people[i].time_ind_covariate[10-1] = 0;
         people[i].time_ind_covariate[11-1] = 0;
         people[i].time_ind_covariate[12-1] = 0;
         people[i].time_ind_covariate[13-1] = 0;
         people[i].time_ind_covariate[14-1] = 0;
         people[i].time_ind_covariate[15-1] = 0;
+        */
         if(n_q_mode > 0)
         {
            q_mode = people[i].q_mode;
@@ -134,6 +137,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
    at this point, all is setup to begin the dynamics.
    start the do loop that will run until the epidemic is over
    ************************************************************/
+  //printf("b=%e  p=%e  lb=%e  lp=%e  coeff_c2p=%e  coeff_p2p=%e\n", b[0], p[0], lb[0], lp[0], coeff_c2p[0], coeff_p2p[0]);
   for(h=0; h<n_community; h++)
   if(community[h].ignore == 0)
   {
@@ -151,6 +155,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
         for(m=0; m<community[h].size; m++)
         {
            i = community[h].member[m];
+           //printf("h=%d  t=%d  i=%d\n", h, t, i);
            if(n_u_mode > 0)  u_mode = people[i].u_mode;
            if(n_q_mode > 0)  q_mode = people[i].q_mode;
            if(people[i].ignore == 0 && people[i].day_infection == MISSING && people[i].pre_immune == 0 && people[i].idx != 1 && t <= people[i].day_exit)
@@ -174,7 +179,8 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
                  prob_esc *= 1.0 - inv_logit(lb[b_mode] + covariate_effect);
                  ptr_contact = ptr_contact->next;
               }
-              
+              //printf("b_mode=%d  b=%e  lb=%e  inv_logit=%e  covariate_effect=%e  prob_esc=%e\n", 
+              //        b_mode, b[b_mode], lb[b_mode], inv_logit(lb[b_mode]), covariate_effect, prob_esc);
               if(cfg_pars.common_contact_history_within_community == 1)
                  ptr_contact = community[h].contact_history[r].p2p_contact;
               else
@@ -197,13 +203,20 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
                        covariate_effect += ptr_contact->offset;
 
                        p_mode = ptr_contact->contact_mode;
-                       prob_esc *= 1.0 - s * bipow(cfg_pars.asym_effect_sim, 1 - people[j].symptom)
+                       temp = 1.0 - s * bipow(cfg_pars.asym_effect_sim, 1 - people[j].symptom)
                                  * inv_logit(lp[p_mode] + covariate_effect);
+                       prob_esc *= temp;
+                       //printf("i=%d  j=%d  symptom=%d  asym_effect_sim=%e  p=%e  lp=%e  covariate_effect=%e  p_effect=%e  s=%e p_esc=%e\n", 
+                       //        people[i].id, people[j].id, people[j].symptom, cfg_pars.asym_effect_sim, p[p_mode], lp[p_mode], 
+                       //        covariate_effect, inv_logit(lp[p_mode]+covariate_effect), s, temp);          
                     }
                  }
                  ptr_contact = ptr_contact->next;
               }    /* if(person->p2p_contact_history[r].size > 0) */
 
+              //printf("h=%d t=%d i=%d x=%f prob_inf=%e day_infection=%d\n", 
+              //        people[i].community, t, i, people[i].time_ind_covariate[0], 1 - prob_esc, people[i].day_infection);
+              
               temp = runiform(&seed);
               if(temp < 1 - prob_esc)
               {
@@ -232,7 +245,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
 
                  if(people[i].symptom == 1) //special scenario for COVID-19, remake time-dependent covariates
                  {
-                    if(cfg_pars.illness_as_covariate == 1)
+                    if(cfg_pars.n_time_dep_covariate > 0 && cfg_pars.illness_as_covariate == 1)
                     {
                        j = cfg_pars.illness_covariate_id - 1;
                        for(tt = people[i].day_ill; tt <= people[i].day_infective_upper; tt++)
@@ -244,6 +257,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
                     }
                  }       
                  //the following is only for the Wuhan household analysis project
+                 /*
                  if(people[i].day_ill > community[h].day_epi_stop - 88 && people[i].day_ill <= community[h].day_epi_stop)
                  {
                     if(people[i].day_ill <= community[h].day_epi_stop - 70) 
@@ -261,9 +275,10 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
                        people[i].time_ind_covariate[14-1] = 1;
                     else
                        people[i].time_ind_covariate[15-1] = 1;
-                 }      
-                 //printf("t=%d i=%d h=%d symptom=%d day_ill=%d\n", 
-                 //        t, i, people[i].community, people[i].symptom, people[i].day_ill);
+                 }   
+                 */   
+                 //printf("h=%d t=%d i=%d x=%f prob_inf=%e symptom=%d day_ill=%d\n", 
+                 //        people[i].community, t, i, people[i].time_ind_covariate[0], 1 - prob_esc, people[i].symptom, people[i].day_ill);
               }
            }
         }
@@ -349,11 +364,11 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
   }
   if(cfg_pars.silent_run == 0)  
   {
-     //printf("before right-censoring: n_imm=%d  n_esc=%d  n_sym=%d (idx=%d sec=%d)  n_asym=%d (idx=%d  sec=%d)\n", 
-     //        n_imm, n_esc, n_sym_idx+n_sym_sec, n_sym_idx, n_sym_sec, n_asym_idx+n_asym_sec, n_asym_idx, n_asym_sec);
-     //printf("preimmune: %d/%d=%e\n", n_imm, p_size, (double) n_imm/p_size);
-     //printf("attack rate: %d/%d=%e\n", (n_sym+n_asym), p_size - n_imm, (double) (n_sym+n_asym) / (p_size-n_imm));
-     //printf("pathogenicity: %d/%d=%e\n", n_sym, (n_sym+n_asym), (double) n_sym/(n_sym+n_asym));
+     printf("before right-censoring: n_imm=%d  n_esc=%d  n_sym=%d (idx=%d sec=%d)  n_asym=%d (idx=%d  sec=%d)\n", 
+             n_imm, n_esc, n_sym_idx+n_sym_sec, n_sym_idx, n_sym_sec, n_asym_idx+n_asym_sec, n_asym_idx, n_asym_sec);
+     printf("preimmune: %d/%d=%e\n", n_imm, p_size, (double) n_imm/p_size);
+     printf("attack rate: %d/%d=%e\n", n_sym_sec+n_asym_sec, n_sym_sec+n_asym_sec+n_esc, (double) (n_sym_sec+n_asym_sec) / (n_sym_sec+n_asym_sec+n_esc));
+     printf("pathogenicity: %d/%d=%e\n", n_sym_sec, (n_sym_sec+n_asym_sec), (double) n_sym_sec/(n_sym_sec+n_asym_sec));
   }
   /*
   n_exp_c = n_inf_c = n_exp_a = n_inf_a = 0;
@@ -414,11 +429,11 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
   }
   if(cfg_pars.silent_run == 0)  
   {
-     //printf("After right-censoring: n_imm=%d  n_esc=%d  n_sym=%d (idx=%d sec=%d)  n_asym=%d (idx=%d  sec=%d)\n", 
-     //        n_imm, n_esc, n_sym_idx+n_sym_sec, n_sym_idx, n_sym_sec, n_asym_idx+n_asym_sec, n_asym_idx, n_asym_sec);
-     //printf("preimmune: %d/%d=%e\n", n_imm, p_size, (double) n_imm/p_size);
-     //printf("attack rate: %d/%d=%e\n", (n_sym+n_asym), p_size - n_imm, (double) (n_sym+n_asym) / (p_size-n_imm));
-     //printf("pathogenicity: %d/%d=%e\n", n_sym, (n_sym+n_asym), (double) n_sym/(n_sym+n_asym));
+     printf("After right-censoring: n_imm=%d  n_esc=%d  n_sym=%d (idx=%d sec=%d)  n_asym=%d (idx=%d  sec=%d)\n", 
+             n_imm, n_esc, n_sym_idx+n_sym_sec, n_sym_idx, n_sym_sec, n_asym_idx+n_asym_sec, n_asym_idx, n_asym_sec);
+     printf("preimmune: %d/%d=%e\n", n_imm, p_size, (double) n_imm/p_size);
+     printf("Secondary attack rate: %d/%d=%e\n", n_sym_sec+n_asym_sec, n_sym_sec+n_asym_sec+n_esc, (double) (n_sym_sec+n_asym_sec) / (n_sym_sec+n_asym_sec+n_esc));
+     printf("pathogenicity: %d/%d=%e\n", n_sym_sec, (n_sym_sec+n_asym_sec), (double) n_sym_sec/(n_sym_sec+n_asym_sec));
   }
   free(c2p_covariate); 
   free(p2p_covariate);

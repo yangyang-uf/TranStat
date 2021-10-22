@@ -14,6 +14,9 @@
 
 #define TINY    1.0e-30
 #define SQRT2PI 2.506628274631               /* sqrt(2 * pi) */
+#ifndef M_PI
+#define M_PI 3.1415926535897932
+#endif
 
    
 /* ============
