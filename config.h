@@ -18,7 +18,7 @@ void RemoveSpaces(char* source)
 CFG_PARS get_cfg_pars(FILE *file)
 {
   char c, *cc;
-  int i, j, k, l, m, n, t, len, n_covariate;
+  int i, j, k, l, m, n, r, t, len, n_covariate;
   int start_day, stop_day;
   double *value;
   char st[100];
@@ -38,8 +38,9 @@ CFG_PARS get_cfg_pars(FILE *file)
   cfg_pars.c2p_offset = cfg_pars.p2p_offset = 1;
   cfg_pars.check_missingness = cfg_pars.check_runtime = cfg_pars.check_mixing = 0;
   cfg_pars.simulation = cfg_pars.n_simulation = cfg_pars.EM = 0;
+  cfg_pars.output_simulation_data = 0;
   cfg_pars.SAR_time_dep_lower = cfg_pars.SAR_time_dep_upper = 0;
-  cfg_pars.n_R0_multiplier = cfg_pars.R0_divide_by_time = cfg_pars.R0_divide_start = cfg_pars.R0_divide_stop = cfg_pars.R0_window_size = 0;
+  cfg_pars.R0_multiplier_provided = cfg_pars.R0_divide_by_time = cfg_pars.R0_divide_start = cfg_pars.R0_divide_stop = cfg_pars.R0_window_size = 0;
   cfg_pars.illness_as_covariate = 0;
   
   cfg_pars.effective_lower_infectious = cfg_pars.effective_upper_infectious = NULL;
@@ -52,8 +53,7 @@ CFG_PARS get_cfg_pars(FILE *file)
   cfg_pars.sim_par_effective = NULL;
   cfg_pars.converge_criteria = NULL;
   cfg_pars.SAR_sus_time_ind_covariate = cfg_pars.SAR_inf_time_ind_covariate = NULL;
-  initialize_matrix(&cfg_pars.SAR_sus_time_dep_covariate);
-  initialize_matrix(&cfg_pars.SAR_inf_time_dep_covariate);
+  cfg_pars.SAR_sus_time_dep_covariate = cfg_pars.SAR_inf_time_dep_covariate = NULL;
   cfg_pars.R0_multiplier = cfg_pars.R0_multiplier_var = NULL;
   cfg_pars.par_equiclass = NULL;
   cfg_pars.par_fixed_id = NULL;
@@ -313,6 +313,9 @@ CFG_PARS get_cfg_pars(FILE *file)
         if(strcmp(st, "perform-simulation") == 0)
            fscanf(file,"%d", &cfg_pars.simulation);
 
+        if(strcmp(st, "output-simulation-data") == 0)
+           fscanf(file,"%d", &cfg_pars.output_simulation_data);
+
         if(strcmp(st, "proportion-with-ambiguity-about-preimmunity-and-escape-status") == 0)
            fscanf(file,"%lf", &cfg_pars.prop_mix_imm_esc);
 
@@ -513,25 +516,30 @@ CFG_PARS get_cfg_pars(FILE *file)
         {
            if(cfg_pars.n_p_mode > 0)
            {
-              fscanf(file,"%d:", &cfg_pars.SAR_covariate_provided);
-              if(cfg_pars.SAR_covariate_provided > 0)
+              fscanf(file,"%d:", &cfg_pars.SAR_n_covariate_sets);
+              if(cfg_pars.SAR_n_covariate_sets > 0)
               {
                  if(cfg_pars.n_time_ind_covariate > 0)  
                  {
-                    // for time-independent covariates, the format looks like
+                    // for time-independent covariates, if you have two sets to estimate two SARs the format looks like
                     // sus-ind  0.3  0  1  3.2
                     // inf-ind  0.1  1  0  6.7
-                    cfg_pars.SAR_sus_time_ind_covariate = (double *)malloc((size_t) (cfg_pars.n_time_ind_covariate * sizeof(double)));
-                    cfg_pars.SAR_inf_time_ind_covariate = (double *)malloc((size_t) (cfg_pars.n_time_ind_covariate * sizeof(double)));
-                    fscanf(file,"%s", string);
-                    for(i=0; i<cfg_pars.n_time_ind_covariate; i++)
- 	                    fscanf(file,"%lf", &cfg_pars.SAR_sus_time_ind_covariate[i]);
-                    fscanf(file,"%s", string);
-                    for(i=0; i<cfg_pars.n_time_ind_covariate; i++)
- 	                    fscanf(file,"%lf", &cfg_pars.SAR_inf_time_ind_covariate[i]);
+                    // sus-ind  0.2  1  1  1.2
+                    // inf-ind  0.3  0  0  5.7
+                    make_2d_array_double(&cfg_pars.SAR_sus_time_ind_covariate, cfg_pars.SAR_n_covariate_sets, cfg_pars.n_time_ind_covariate, 0.0);
+                    make_2d_array_double(&cfg_pars.SAR_inf_time_ind_covariate, cfg_pars.SAR_n_covariate_sets, cfg_pars.n_time_ind_covariate, 0.0);
+                    for(n=0; n<cfg_pars.SAR_n_covariate_sets; n++)
+                    {
+                       fscanf(file,"%s", string);
+                       for(i=0; i<cfg_pars.n_time_ind_covariate; i++)
+ 	                       fscanf(file,"%lf", &cfg_pars.SAR_sus_time_ind_covariate[n][i]);
+                       fscanf(file,"%s", string);
+                       for(i=0; i<cfg_pars.n_time_ind_covariate; i++)
+ 	                       fscanf(file,"%lf", &cfg_pars.SAR_inf_time_ind_covariate[n][i]);
+                    }
  	              }      
-                 if(cfg_pars.n_time_dep_covariate > 0)  
-                 {
+                  if(cfg_pars.n_time_dep_covariate > 0)  
+                  {
                     // for time-dependent covariates, suppose infectious period is day -5 to day 13, with day 0 for symptom onset.
                     // suppose only 1 such covariate, and takes value 0 for the whole period for susceptible, and take value 0 for days -5 to 0
                     // and 1 for days 1 to 13. the format looks like
@@ -544,50 +552,51 @@ CFG_PARS get_cfg_pars(FILE *file)
                     value =  (double *)malloc((size_t) (cfg_pars.n_time_dep_covariate * sizeof(double)));
                     fscanf(file,"%d  %d", &cfg_pars.SAR_time_dep_lower, &cfg_pars.SAR_time_dep_upper);
                     len = cfg_pars.SAR_time_dep_upper - cfg_pars.SAR_time_dep_lower + 1;
-                    initialize_matrix(&cfg_pars.SAR_sus_time_dep_covariate);
-                    inflate_matrix(&cfg_pars.SAR_sus_time_dep_covariate, len, cfg_pars.n_time_dep_covariate, 0.0); 
-                    initialize_matrix(&cfg_pars.SAR_inf_time_dep_covariate);
-                    inflate_matrix(&cfg_pars.SAR_inf_time_dep_covariate, len, cfg_pars.n_time_dep_covariate, 0.0);                
+                    make_3d_array_double(&cfg_pars.SAR_sus_time_dep_covariate, cfg_pars.SAR_n_covariate_sets, len, cfg_pars.n_time_dep_covariate, 0.0); 
+                    make_3d_array_double(&cfg_pars.SAR_inf_time_dep_covariate, cfg_pars.SAR_n_covariate_sets, len, cfg_pars.n_time_dep_covariate, 0.0);                
                     // read in time-dependent covariates for susceptible 
-                    fscanf(file, "%s  %d", string, &m); 
-                    //printf("%s  %d\n", string, m);
-                    for(i=0; i<m; i++)
+                    for(n=0; n<cfg_pars.SAR_n_covariate_sets; n++)
                     {
-                       fscanf(file,"%d  %d", &start_day, &stop_day);
-                       //printf("start=%d  stop=%d:\n", start_day, stop_day);
-                       for(j=0; j<cfg_pars.n_time_dep_covariate; j++)
-                       {
- 	                       fscanf(file,"%lf", &value[j]);
- 	                       //printf("%e ", value[j]);
- 	                    }   
- 	                    //printf("\n"); 
-                       for(t=start_day; t<=stop_day; t++)
-                       {
-                          k = t - cfg_pars.SAR_time_dep_lower;
- 	                       for(l=0; l<cfg_pars.n_time_dep_covariate; l++) 
-                             cfg_pars.SAR_sus_time_dep_covariate.data[k][l] = value[l];
-                       } 
+                        fscanf(file, "%s  %d", string, &m); 
+                        //printf("%s  %d\n", string, m);
+                        for(i=0; i<m; i++)
+                        {
+                           fscanf(file,"%d  %d", &start_day, &stop_day);
+                           //printf("start=%d  stop=%d:\n", start_day, stop_day);
+                           for(j=0; j<cfg_pars.n_time_dep_covariate; j++)
+                           {
+                               fscanf(file,"%lf", &value[j]);
+                               //printf("%e ", value[j]);
+                            }   
+                            //printf("\n"); 
+                           for(t=start_day; t<=stop_day; t++)
+                           {
+                              r = t - cfg_pars.SAR_time_dep_lower;
+                              for(l=0; l<cfg_pars.n_time_dep_covariate; l++) 
+                                 cfg_pars.SAR_sus_time_dep_covariate[n][r][l] = value[l];
+                           } 
+                        }   
+                        // read in time-dependent covariates for infectious     
+                        fscanf(file, "%s  %d", string, &m); 
+                        //printf("%s  %d\n", string, m);
+                        for(i=0; i<m; i++)
+                        {
+                           fscanf(file,"%d  %d", &start_day, &stop_day);
+                           //printf("start=%d  stop=%d:\n", start_day, stop_day);
+                           for(j=0; j<cfg_pars.n_time_dep_covariate; j++)
+                           {
+                               fscanf(file,"%lf", &value[j]);
+                               //printf("%e ", value[j]);
+                            }
+                           //printf("\n");   
+                           for(t=start_day; t<=stop_day; t++)
+                           {
+                              r = t - cfg_pars.SAR_time_dep_lower;
+                              for(l=0; l<cfg_pars.n_time_dep_covariate; l++) 
+                                 cfg_pars.SAR_inf_time_dep_covariate[n][r][l] = value[l];
+                           } 
+                        } 
                     }   
-                    // read in time-dependent covariates for infectious     
-                    fscanf(file, "%s  %d", string, &m); 
-                    //printf("%s  %d\n", string, m);
-                    for(i=0; i<m; i++)
-                    {
-                       fscanf(file,"%d  %d", &start_day, &stop_day);
-                       //printf("start=%d  stop=%d:\n", start_day, stop_day);
-                       for(j=0; j<cfg_pars.n_time_dep_covariate; j++)
-                       {
- 	                       fscanf(file,"%lf", &value[j]);
- 	                       //printf("%e ", value[j]);
- 	                    }
-                       //printf("\n");   
-                       for(t=start_day; t<=stop_day; t++)
-                       {
-                          k = t - cfg_pars.SAR_time_dep_lower;
- 	                       for(l=0; l<cfg_pars.n_time_dep_covariate; l++) 
-                             cfg_pars.SAR_inf_time_dep_covariate.data[k][l] = value[l];
-                       } 
-                    } 
                     free(value);       
  	              }   
               }      
@@ -598,10 +607,10 @@ CFG_PARS get_cfg_pars(FILE *file)
         {
            if(cfg_pars.n_p_mode > 0)
            {
-              fscanf(file,"%d:", &cfg_pars.n_R0_multiplier);
-              if(cfg_pars.n_R0_multiplier > 0)
+              fscanf(file,"%d:", &cfg_pars.R0_multiplier_provided);
+              if(cfg_pars.R0_multiplier_provided > 0)
               {
-                 n = cfg_pars.n_p_mode * cfg_pars.n_R0_multiplier;
+                 n = cfg_pars.n_p_mode;
                  cfg_pars.R0_multiplier = (double *)malloc((size_t) (n * sizeof(double)));
                  cfg_pars.R0_multiplier_var = (double *)malloc((size_t) (n * sizeof(double)));
                  for(i=0; i<n; i++)
@@ -738,7 +747,7 @@ int write_cfg_pars(FILE *file, CFG_PARS *cfg_pars)
   if(cfg_pars->n_int_p2p_covariate > 0)
   {
      for(i=0; i<cfg_pars->n_int_p2p_covariate; i++)
-        fprintf(file, "%d  ", cfg_pars->interaction[i]);
+        fprintf(file, "%d  %d  ", cfg_pars->interaction[i][0], cfg_pars->interaction[i][1]);
   }
 
   fprintf(file, "\n\n");
@@ -937,7 +946,7 @@ int write_cfg_pars(FILE *file, CFG_PARS *cfg_pars)
            
   fprintf(file, "\n");
   fprintf(file, "# relative-infectivity-of-asymptomatic-case-for-estimation\n");
-  fprintf(file, "%d\n", cfg_pars->asym_effect_est);
+  fprintf(file, "%e\n", cfg_pars->asym_effect_est);
          
   //fprintf(file, "\n");
   //fprintf(file, "# members-share-common-c2p-contact-history-across-communities\n");
@@ -991,12 +1000,12 @@ int write_cfg_pars(FILE *file, CFG_PARS *cfg_pars)
   }
   fprintf(file, "\n");
   fprintf(file, "# multiplier-for-calculating-R0\n");
-  fprintf(file, "%d:\n", cfg_pars->n_R0_multiplier);
+  fprintf(file, "%d:\n", cfg_pars->R0_multiplier_provided);
   if(cfg_pars->n_p_mode > 0)
   {
-     if(cfg_pars->n_R0_multiplier > 0)
+     if(cfg_pars->R0_multiplier_provided > 0)
      {
-        n = cfg_pars->n_p_mode * cfg_pars->n_R0_multiplier;
+        n = cfg_pars->n_p_mode;
         for(i=0; i<n; i++)
         {
            fprintf(file, "%e %e\n", cfg_pars->R0_multiplier[i], cfg_pars->R0_multiplier_var[i]);

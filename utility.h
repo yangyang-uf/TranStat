@@ -73,14 +73,21 @@ void create_arrays(void)
   n_par_equiclass = cfg_pars.n_par_equiclass;
 
   ee = cum_ee = cum_log_ee = NULL;
-  lb = lp = lq = lu = coeff_c2p = coeff_p2p = coeff_imm = coeff_pat = NULL;
-  b = p = q = u = OR_c2p = OR_p2p = OR_pat = OR_imm = CPI = SAR = R0 = NULL;
   
-  se_lb = se_lp = se_lu = se_lq = se_coeff_c2p = se_coeff_p2p = se_coeff_pat = se_coeff_imm = NULL;
-  se_b = se_p = se_u = se_q = se_OR_c2p = se_OR_p2p = se_OR_pat = se_OR_imm = se_CPI = se_SAR = se_R0 = NULL;
+  b = se_b = lb = se_lb = lower_b = upper_b = NULL;
+  p = se_p = lp = se_lp = lower_p = upper_p = NULL;
+  q = se_q = lq = se_lq = lower_q = upper_q = NULL;
+  u = se_u = lu = se_lu = lower_u = upper_u = NULL;
 
-  lower_b = lower_p = lower_u = lower_q = lower_OR_c2p = lower_OR_p2p = lower_OR_pat = lower_OR_imm = lower_CPI = lower_SAR = lower_R0 = NULL;
-  upper_b = upper_p = upper_u = upper_q = upper_OR_c2p = upper_OR_p2p = upper_OR_pat = upper_OR_imm = upper_CPI = upper_SAR = upper_R0 = NULL;
+  coeff_c2p = se_coeff_c2p = OR_c2p = se_OR_c2p = lower_OR_c2p = upper_OR_c2p = NULL;
+  coeff_p2p = se_coeff_p2p = OR_p2p = se_OR_p2p = lower_OR_p2p = upper_OR_p2p = NULL;
+  coeff_pat = se_coeff_pat = OR_pat = se_OR_pat = lower_OR_pat = upper_OR_pat = NULL;
+  coeff_imm = se_coeff_imm = OR_imm = se_OR_imm = lower_OR_imm = upper_OR_imm = NULL;
+
+  CPI = se_CPI = lower_CPI = upper_CPI = NULL;
+  SAR0 = se_SAR0 = lower_SAR0 = upper_SAR0 = NULL;
+  SAR = se_SAR = lower_SAR = upper_SAR = NULL;
+  R0_adj = se_R0_adj = lower_R0_adj = upper_R0_adj = NULL;
 
   log_f_lb = log_f_c2p = log_f_lp = log_f_p2p = NULL;
   log_f_lb_lb = log_f_lp_lp = NULL;
@@ -197,17 +204,22 @@ void create_arrays(void)
      make_1d_array_double(&lower_p, n_p_mode, 0.0);
      make_1d_array_double(&upper_p, n_p_mode, 0.0);
 
-     make_1d_array_double(&SAR, n_p_mode, 0.0);
-     make_1d_array_double(&se_SAR, n_p_mode, 0.0);
-     make_1d_array_double(&lower_SAR, n_p_mode, 0.0);
-     make_1d_array_double(&upper_SAR, n_p_mode, 0.0);
-     
-     if(cfg_pars.n_R0_multiplier > 0)
+     make_1d_array_double(&SAR0, n_p_mode, 0.0);
+     make_1d_array_double(&se_SAR0, n_p_mode, 0.0);
+     make_1d_array_double(&lower_SAR0, n_p_mode, 0.0);
+     make_1d_array_double(&upper_SAR0, n_p_mode, 0.0);
+
+     if(cfg_pars.SAR_n_covariate_sets > 0)
      {
-        make_1d_array_double(&R0, cfg_pars.n_R0_multiplier, 0.0);
-        make_1d_array_double(&se_R0, cfg_pars.n_R0_multiplier, 0.0);
-        make_1d_array_double(&lower_R0, cfg_pars.n_R0_multiplier, 0.0);
-        make_1d_array_double(&upper_R0, cfg_pars.n_R0_multiplier, 0.0);
+        make_2d_array_double(&SAR, cfg_pars.SAR_n_covariate_sets, n_p_mode, 0.0);
+        make_2d_array_double(&se_SAR, cfg_pars.SAR_n_covariate_sets, n_p_mode, 0.0);
+        make_2d_array_double(&lower_SAR, cfg_pars.SAR_n_covariate_sets, n_p_mode, 0.0);
+        make_2d_array_double(&upper_SAR, cfg_pars.SAR_n_covariate_sets, n_p_mode, 0.0);
+     
+        make_1d_array_double(&R0_adj, cfg_pars.SAR_n_covariate_sets, 0.0);
+        make_1d_array_double(&se_R0_adj, cfg_pars.SAR_n_covariate_sets,  0.0);
+        make_1d_array_double(&lower_R0_adj, cfg_pars.SAR_n_covariate_sets, 0.0);
+        make_1d_array_double(&upper_R0_adj, cfg_pars.SAR_n_covariate_sets, 0.0);
      }    
   }
   if(n_u_mode > 0)
@@ -820,15 +832,20 @@ void free_arrays(void)
      free(lower_p);
      free(upper_p);
 
-     free(SAR);
-     free(se_SAR);
-     free(lower_SAR);
-     free(upper_SAR);
+     free(SAR0);
+     free(se_SAR0);
+     free(lower_SAR0);
+     free(upper_SAR0);
+     
+     free_2d_array_double(SAR);
+     free_2d_array_double(se_SAR);
+     free_2d_array_double(lower_SAR);
+     free_2d_array_double(upper_SAR);
 
-     free(R0);
-     free(se_R0);
-     free(lower_R0);
-     free(upper_R0);
+     free(R0_adj);
+     free(se_R0_adj);
+     free(lower_R0_adj);
+     free(upper_R0_adj);
      
      free(log_f_lp);
      free(log_f_lp_lp);
@@ -1357,39 +1374,19 @@ void organize_p2p_covariate(int t, PEOPLE *sus_person, PEOPLE *inf_person, doubl
       if(n_inf_p2p_covariate > 0)  inf_p2p_covariate = (double *)malloc((size_t) (n_inf_p2p_covariate * sizeof(double)));
       if(n_int_p2p_covariate > 0)  int_p2p_covariate = (double *)malloc((size_t) (n_int_p2p_covariate * sizeof(double)));
 
-      if(sus_person == NULL)
-      {
-         if(cfg_pars.SAR_covariate_provided == 0)
-         {
-            printf("Covariates for calculating SAR are not provided. The function organize_p2p_covariate should not be called\n");
-            exit(0);
-         }   
-         r = t - cfg_pars.SAR_time_dep_lower;
-         for(k=0; k<n_time_ind_covariate; k++)
-            sus_covariate[k] = cfg_pars.SAR_sus_time_ind_covariate[k];
-         for(k=0; k<n_time_dep_covariate; k++)
-            sus_covariate[n_time_ind_covariate + k] = cfg_pars.SAR_sus_time_dep_covariate.data[r][k];
+      h = sus_person->community;
+      r = t - community[h].day_epi_start;
+     
+      for(k=0; k<n_time_ind_covariate; k++)
+        sus_covariate[k] = sus_person->time_ind_covariate[k];
+      for(k=0; k<n_time_dep_covariate; k++)
+        sus_covariate[n_time_ind_covariate + k] = sus_person->time_dep_covariate[r][k];
 
-         for(k=0; k<n_time_ind_covariate; k++)
-            inf_covariate[k] = cfg_pars.SAR_inf_time_ind_covariate[k];
-         for(k=0; k<n_time_dep_covariate; k++)
-            inf_covariate[n_time_ind_covariate + k] = cfg_pars.SAR_inf_time_dep_covariate.data[r][k];
-      }      
-      else
-      {
-         h = sus_person->community;
-         r = t - community[h].day_epi_start;
-         
-         for(k=0; k<n_time_ind_covariate; k++)
-            sus_covariate[k] = sus_person->time_ind_covariate[k];
-         for(k=0; k<n_time_dep_covariate; k++)
-            sus_covariate[n_time_ind_covariate + k] = sus_person->time_dep_covariate[r][k];
-
-         for(k=0; k<n_time_ind_covariate; k++)
-            inf_covariate[k] = inf_person->time_ind_covariate[k];
-         for(k=0; k<n_time_dep_covariate; k++)
-            inf_covariate[n_time_ind_covariate + k] = inf_person->time_dep_covariate[r][k];
-      }
+      for(k=0; k<n_time_ind_covariate; k++)
+        inf_covariate[k] = inf_person->time_ind_covariate[k];
+      for(k=0; k<n_time_dep_covariate; k++)
+        inf_covariate[n_time_ind_covariate + k] = inf_person->time_dep_covariate[r][k];
+      
       l = 0;
       for(k=0; k<n_sus_p2p_covariate; k++)
       {
@@ -1424,6 +1421,82 @@ void organize_p2p_covariate(int t, PEOPLE *sus_person, PEOPLE *inf_person, doubl
       free(int_p2p_covariate);
    }
 }
+void organize_p2p_covariate_4SAR(int which_covariate_set, int which_time, double *p2p_covariate)
+{
+   int h, i, j, k, l, m, n, r;
+   int n_covariate, n_time_ind_covariate, n_time_dep_covariate;
+   int n_sus_p2p_covariate, n_inf_p2p_covariate, n_int_p2p_covariate;
+   double *sus_covariate, *inf_covariate;
+   double *sus_p2p_covariate, *inf_p2p_covariate, *int_p2p_covariate;
+
+   n_time_ind_covariate = cfg_pars.n_time_ind_covariate;
+   n_time_dep_covariate = cfg_pars.n_time_dep_covariate;
+   n_covariate = cfg_pars.n_covariate;
+   n_sus_p2p_covariate = cfg_pars.n_sus_p2p_covariate;
+   n_inf_p2p_covariate = cfg_pars.n_inf_p2p_covariate;
+   n_int_p2p_covariate = cfg_pars.n_int_p2p_covariate;
+
+   sus_covariate = inf_covariate = sus_p2p_covariate =
+   inf_p2p_covariate = int_p2p_covariate = NULL;
+
+   if(n_covariate > 0)  
+   {
+      sus_covariate = (double *)malloc((size_t) (n_covariate * sizeof(double)));
+      inf_covariate = (double *)malloc((size_t) (n_covariate * sizeof(double)));
+      if(n_sus_p2p_covariate > 0)  sus_p2p_covariate = (double *)malloc((size_t) (n_sus_p2p_covariate * sizeof(double)));
+      if(n_inf_p2p_covariate > 0)  inf_p2p_covariate = (double *)malloc((size_t) (n_inf_p2p_covariate * sizeof(double)));
+      if(n_int_p2p_covariate > 0)  int_p2p_covariate = (double *)malloc((size_t) (n_int_p2p_covariate * sizeof(double)));
+
+      if(cfg_pars.SAR_n_covariate_sets == 0)
+      {
+        printf("Covariates for calculating SAR are not provided. The function organize_p2p_covariate should not be called\n");
+        exit(0);
+      }   
+      for(k=0; k<n_time_ind_covariate; k++)
+         sus_covariate[k] = cfg_pars.SAR_sus_time_ind_covariate[which_covariate_set][k];
+      for(k=0; k<n_time_dep_covariate; k++)
+         sus_covariate[n_time_ind_covariate + k] = cfg_pars.SAR_sus_time_dep_covariate[which_covariate_set][which_time][k];
+
+      for(k=0; k<n_time_ind_covariate; k++)
+         inf_covariate[k] = cfg_pars.SAR_inf_time_ind_covariate[which_covariate_set][k];
+      for(k=0; k<n_time_dep_covariate; k++)
+         inf_covariate[n_time_ind_covariate + k] = cfg_pars.SAR_inf_time_dep_covariate[which_covariate_set][which_time][k];
+
+      l = 0;
+      for(k=0; k<n_sus_p2p_covariate; k++)
+      {
+         m = cfg_pars.sus_p2p_covariate[k] - 1;
+         sus_p2p_covariate[l++] = sus_covariate[m];
+      }
+
+      l = 0;
+      for(k=0; k<n_inf_p2p_covariate; k++)
+      {
+         m = cfg_pars.inf_p2p_covariate[k] - 1;
+         inf_p2p_covariate[l++] = inf_covariate[m];
+      }
+
+      l = 0;
+      for(k=0; k<cfg_pars.n_int_p2p_covariate; k++)
+      {
+         m = cfg_pars.interaction[k][0] - 1;
+         n = cfg_pars.interaction[k][1] - 1;
+         int_p2p_covariate[l++] = sus_covariate[m] * inf_covariate[n];
+      }
+
+      l = 0;
+      for(k=0; k<n_sus_p2p_covariate; k++)   p2p_covariate[l++] = sus_p2p_covariate[k];
+      for(k=0; k<n_inf_p2p_covariate; k++)   p2p_covariate[l++] = inf_p2p_covariate[k];
+      for(k=0; k<n_int_p2p_covariate; k++)   p2p_covariate[l++] = int_p2p_covariate[k];
+
+      free(sus_covariate);
+      free(inf_covariate);
+      free(sus_p2p_covariate);
+      free(inf_p2p_covariate);
+      free(int_p2p_covariate);
+   }
+}
+
 
 
 //this function extracts covariates affecting preseason immunity for model fitting from
@@ -2095,7 +2168,7 @@ void create_risk_class(void)
 }
            
             
-int delete_p2p_risk_history(int t, PEOPLE *sus_person, CONTACT *sus_ptr_contact, double infective_prob, int symptom)
+void delete_p2p_risk_history(int t, PEOPLE *sus_person, CONTACT *sus_ptr_contact, double infective_prob, int symptom)
 {
    int h, i, j, k, l, m, n, r;
    int found, match;
@@ -2162,10 +2235,9 @@ int delete_p2p_risk_history(int t, PEOPLE *sus_person, CONTACT *sus_ptr_contact,
       }
    }
    free(p2p_covariate);
-   return(0);
 }
 
-int delete_p2p_risk_history_in_risk_class(int t, PEOPLE *inf_person, double infective_prob, int symptom)
+void delete_p2p_risk_history_in_risk_class(int t, PEOPLE *inf_person, double infective_prob, int symptom)
 {
    int h, i, j, k, l, m, n, r;
    int found, match;

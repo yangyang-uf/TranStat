@@ -1156,8 +1156,8 @@ int covariance(double *par_effective, COMMUNITY *aux_community, MATRIX *var_logi
    int n_par, n_par_equiclass, n_b_mode, n_p_mode, n_q_mode, n_u_mode; 
    int error = 0;
    double *der, log_L_grp, weight, sum_weight;
-   double *log_L_cur, *log_L_ini;
-   MATRIX first, second, score_grp, info_grp;
+   double *log_L_cur, *log_L_ini, tmp_log_L;
+   MATRIX first, second, score_grp, info_grp, tmp_first;
    MATRIX score, score_by_sample, score2, info;
    MATRIX em_info, sub_info, sub_inv;
    STATE *ptr_stat, *ptr2_stat;
@@ -1171,6 +1171,7 @@ int covariance(double *par_effective, COMMUNITY *aux_community, MATRIX *var_logi
    n_par_equiclass = cfg_pars.n_par_equiclass;
 
    initialize_matrix(&first);
+   initialize_matrix(&tmp_first);
    initialize_matrix(&second);
    initialize_matrix(&score_grp);
    initialize_matrix(&info_grp);
@@ -1183,6 +1184,7 @@ int covariance(double *par_effective, COMMUNITY *aux_community, MATRIX *var_logi
    initialize_matrix(&sub_inv);
 
    inflate_matrix(&first, n_par, 1, 0);
+   inflate_matrix(&tmp_first, n_par, 1, 0);
    inflate_matrix(&second, n_par, n_par, 0);
    inflate_matrix(&score_grp, n_par, 1, 0);
    inflate_matrix(&info_grp, n_par, n_par, 0);
@@ -1290,10 +1292,32 @@ int covariance(double *par_effective, COMMUNITY *aux_community, MATRIX *var_logi
                for(j=0; j<n_par; j++)  
                   score_by_sample.data[j][k] += first.data[j][0];
             }
+            // check the calculation of household 505 which has two members. We wan to make sure the
+            // derivatives are correctly calculated. Person 1764 is asymptomatic, with day_ill varying from day 10 to day 15.
+            // The primary case 1763 das day_ill=10. 
+            /*if(ptr_stat->next == NULL && h == 505)
+            {
+                print_2d_int(person->possible_states, 2, person->size_possible_states);
+
+                if(person->possible_states[0][ptr_stat->states[0]] == 15)
+                {
+                    fmprintf(&first);
+                    fmprintf(&second);
+                    printf("log-likleihood=%e\n", ptr_stat->log_L_cur);
+                    show_par_effective(par_effective, NULL);
+                    community_score(community+h, par_effective, & tmp_log_L, &tmp_first);
+                    printf("log-likleihood=%e\n", tmp_log_L);
+                    fmprintf(&tmp_first);
+
+                }
+            }*/    
             ptr_stat = ptr_stat->next;
             k++;
          }
          addition(&info, 1.0, &info_grp, 1.0/sum_weight, &info);
+         //fmprintf(&info_grp);
+         //if(h == 505)  exit(0);
+         
       }
    }
    
@@ -1318,15 +1342,15 @@ int covariance(double *par_effective, COMMUNITY *aux_community, MATRIX *var_logi
       }
    }
    
-   /*printf("\nestimate for covariance:\n");
-   show_par_effective(par_effective, NULL);
-   printf("\nscore:\n");
-   fmprintf(&score);
-   printf("\nscore2:\n");
-   fmprintf(&score2);
-   printf("\ninfo:\n");
-   fmprintf(&info);
-   exit(0);*/
+   //printf("\nestimate for covariance:\n");
+   //show_par_effective(par_effective, NULL);
+   //printf("\nscore:\n");
+   //fmprintf(&score);
+   //printf("\nscore2:\n");
+   //fmprintf(&score2);
+   //printf("\ninfo:\n");
+   //fmprintf(&info);
+   //exit(0);
      
    reset(&em_info, 0.0);
    for(i=0; i<n_par; i++)
@@ -1404,6 +1428,7 @@ int covariance(double *par_effective, COMMUNITY *aux_community, MATRIX *var_logi
 
 end:
    deflate_matrix(&first);
+   deflate_matrix(&tmp_first);
    deflate_matrix(&second);
    deflate_matrix(&score_grp);
    deflate_matrix(&info_grp);
@@ -1422,7 +1447,7 @@ int adjust_for_mce(double *ini_par_effective, int optimization_method, COMMUNITY
 {
    int h, i, j ,k, l, m, n;
    int n_valid_est, n_valid_var;
-   int *index;
+   unsigned int *index;
    int n_par, n_par_equiclass, n_b_mode, n_p_mode, n_q_mode, n_u_mode;
    int iter, loop, converge, error;
    int max_EM_iter = 200;
@@ -1457,7 +1482,7 @@ int adjust_for_mce(double *ini_par_effective, int optimization_method, COMMUNITY
    inflate_matrix(&E_var_logit, n_par, n_par, 0.0);
    inflate_matrix(&E_var, n_par, n_par, 0.0);
 
-   index = (int *) malloc((size_t) size_sample_states * sizeof(int));
+   index = (unsigned int *) malloc((size_t) size_sample_states * sizeof(unsigned int));
    make_1d_array_double(&der, n_par, 0.0);
    par_effective = (double *) malloc((size_t) n_par_equiclass * sizeof(double));
    old_par_effective = (double *) malloc((size_t) n_par_equiclass * sizeof(double));
@@ -1915,7 +1940,7 @@ int control(double *ini_par_effective, double *par_effective, double *max_log_L,
       TIME_SAMPLING_SEC = difftime(t2,t1);
       TIME_SAMPLING_CPU = T2 - T1;
       if(cfg_pars.silent_run == 0)  
-         printf("It takes %d seconds (%d cpu clocks) to generate MCMC importance samples for MCEM\n", TIME_SAMPLING_SEC, TIME_SAMPLING_CPU);
+         printf("It takes %ld seconds (%ld cpu clocks) to generate MCMC importance samples for MCEM\n", TIME_SAMPLING_SEC, TIME_SAMPLING_CPU);
      
       if(cfg_pars.silent_run == 0)
          printf("\n\nBegin MCEM iterations with fixed sample size\n");
@@ -1965,7 +1990,7 @@ int control(double *ini_par_effective, double *par_effective, double *max_log_L,
       TIME_ITERATION_SEC = difftime(t2,t1);
       TIME_ITERATION_CPU = T2 - T1;
       if(cfg_pars.silent_run == 0)  
-         printf("It takes %d seconds and %d iterations to finish the EM iterations\n", TIME_ITERATION_SEC, loop);
+         printf("It takes %ld seconds and %d iterations to finish the EM iterations\n", TIME_ITERATION_SEC, loop);
       
       // output sample infectiousness onset days of asymptomatic cases
       // so that we can check how well they mix
@@ -2458,7 +2483,6 @@ int estimation(int id_inc, int id_inf, int id_time, double *est, double *logL, M
         error =  covariance(par_effective, aux_community, var_logit, 1);
      }
      if(error > 0)  error_type = 15;
-     //printf("check2\n");
         
      t2 = time(NULL);   
      T2 = clock();   

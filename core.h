@@ -329,7 +329,7 @@ int core(int id_inc, int id_inf, int id_time)
         //0 < day_epi_start <= day_epi_stop must hold 
         if(community[h].day_epi_stop < community[h].day_epi_start)
         {
-           printf("Community %d does not have correctly ordered key days: ");
+           printf("Community %d does not have correctly ordered key days: ", h);
            printf("epidemic start=%d  epidemic stop=%d\n",
                    community[h].day_epi_start, community[h].day_epi_stop);    
            fclose(file);
@@ -810,15 +810,26 @@ int core(int id_inc, int id_inf, int id_time)
      //if(admissibility() == 1)  goto end;
   }  
      
-
+  //begin iterations for simulation. If this is not a simulation, there will be only one loop.
   n_iter = (cfg_pars.simulation == 1)? cfg_pars.n_simulation : 1;
   printf("n_iter=%d\n", n_iter);
   for(ITER=0; ITER<n_iter; ITER++)
   {
-   
      if(cfg_pars.simulation == 1 && cfg_pars.silent_run >= 0)  printf("\n SIMULATION: %d \n\n", ITER);
      if(cfg_pars.simulation == 1)  simulate(0, NULL);
-     
+     if(cfg_pars.output_simulation_data == 1) //output simulated data (only with time-independent covariates) for regression analysis
+     {
+        sprintf(file_name, "%ssim_pop_%d.txt", cfg_pars.path_out, ITER);
+        file = fopen(file_name, "w");        
+        for(i=0,person=people; i < p_size; i++,person++)
+        {
+           fprintf(file, "%d  %d  %d  %d  %d", person->id, person->community, person->idx, person->infection, person->day_ill); 
+           for(j=0; j<n_time_ind_covariate; j++)
+              fprintf(file, "  %e",  person->time_ind_covariate[j]);
+           fprintf(file, "\n");
+        }
+        fclose(file);      
+     }
      // From now on an epidemic has been generated, either from user input files or the simulator
 
      /*
@@ -884,9 +895,11 @@ int core(int id_inc, int id_inf, int id_time)
         {
                  
            //printf("h=%d\n", h);
+           //if cfg_pars.preset_index=1, set_index_cases() will only create an index case tracking array and identify the earliest 
+           //and latest illness onset dates of index cases. if cfg_pars.preset_index=0, index case status will be assigned according to the sequqence of onsets.  
            set_index_cases(community+h);
            // For simulation with case-ascertained design, families without index cases or with only index cases are excluded from analysis.
-           // For real data analysis, if EM-MCEM is not to be used, these families are also exlcuded; but is EM-MCEM is to be used,
+           // For real data analysis, if EM-MCEM is not to be used, these families are also exlcuded; but if EM-MCEM is to be used,
            // we cannot exclude these families because index cases could be generated when we sample possible states in these families.
            // Example: a family may have only an asymptomatic infection, and the day_ill will be set to MISSING when pop.dat is read in.
            // TranStat will not detect this peron as an index case unless user set this infection as index case and set preset_index=1,
@@ -918,6 +931,7 @@ int core(int id_inc, int id_inf, int id_time)
            }
         }   
      }
+     estimation_error_type = test_error_type = -1;
      //count_cases();
      /*file = fopen("check_sim_pop.dat", "w");
      for(i=0; i<p_size; i++)   
@@ -1026,6 +1040,11 @@ int core(int id_inc, int id_inf, int id_time)
                        }
                     }
                  }
+                 //if(people[i].id == 1764)  
+                 //{    
+                 //    print_2d_int(people[i].possible_states, 2, people[i].size_possible_states);
+                 //    exit(0);
+                 //}    
               }
            }
            fclose(file);
@@ -1362,7 +1381,6 @@ int core(int id_inc, int id_inf, int id_time)
      //   if(admissibility() == 1)  goto end;
      //}
      estimation_error_type = test_error_type = -1;
-     
      /*********************************************************************************
      Estimation starts here.
      estimation_error_type takes 3 values:
@@ -1463,47 +1481,27 @@ int core(int id_inc, int id_inf, int id_time)
         reset(&der_mat, 0.0);   
         for(k=0; k<n_p_mode; k++)
         {
-           //printf("p_mode=%d\n", k);
            lower_p[k] = inv_logit(lp[k] - 1.96 * se_lp[k]);
            upper_p[k] = inv_logit(lp[k] + 1.96 * se_lp[k]);
               
+           // Calculate unadjusted SAR
            p_esc = 1.0;
            reset_1d_array_double(der, n_par, 0.0);
            reset_1d_array_double(log_f_lp, n_p_mode, 0.0);
-           if(n_p2p_covariate > 0)  reset_1d_array_double(log_f_p2p, n_p2p_covariate, 0.0);
            for(t=cfg_pars.effective_lower_infectious[k]; t<=cfg_pars.effective_upper_infectious[k]; t++)  
            {
-              if(n_p2p_covariate > 0)
-              {
-                 if(cfg_pars.SAR_covariate_provided > 0)  
-                    organize_p2p_covariate(t, NULL, NULL, p2p_covariate);
-                 else
-                    reset_1d_array_double(p2p_covariate, n_p2p_covariate, 0.0);  
-              }       
-              covariate_effect = 0.0;
-              for(j=0; j<n_p2p_covariate; j++)
-                  covariate_effect += p2p_covariate[j] * coeff_p2p[j];
-              logit_f = lp[k] + covariate_effect;
+              logit_f = lp[k];
               l = t - cfg_pars.lower_infectious;
               s = cfg_pars.prob_infectious[l];
               ff = inv_logit(logit_f) * s;
               f = 1 - ff;
               factor1 = ff / s;
               log_f_lp[k] = - ff * (1 - factor1) / f;
-              for(j=0; j<n_p2p_covariate; j++)
-                 log_f_p2p[j] = log_f_lp[k] * p2p_covariate[j];
               p_esc *= f;
               //der is d(log p_esc) / d (p[k]) or d(log p_esc) / d coeff_p2p
               der[n_b_mode + k] += log_f_lp[k];
-              for(j=0; j<n_p2p_covariate; j++)
-                 der[n_b_mode + n_p_mode + n_u_mode + n_q_mode + n_c2p_covariate + j] += log_f_p2p[j];
-              //printf("t=%d  s=%e\n", t, s);
-              //printf("   p2p covariates:");
-              //for(j=0; j<n_p2p_covariate; j++)  printf("%e  ", p2p_covariate[j]);
-              //printf("\n");
-              //printf("   covariate_effect=%e  f=%e  p_esc=%e\n", covariate_effect, f, p_esc);
            }
-           SAR[k] = 1.0 - p_esc;
+           SAR0[k] = 1.0 - p_esc;
            for(j=0; j<n_par; j++) der_mat.data[k][j] = - p_esc * der[j];  //der1 is d(SAR) / d (lp[k]) or d(SAR) / d coeff_p2p
            var_SAR = 0.0;
            for(j=0; j<n_par; j++)
@@ -1513,24 +1511,82 @@ int core(int id_inc, int id_inf, int id_time)
                  var_SAR += der_mat.data[k][j] * der_mat.data[k][l] * var_logit.data[j][l];
               }
            }  
-           se_SAR[k] = sqrt(var_SAR);
-           se_logit_SAR = se_SAR[k] / (SAR[k] * (1 - SAR[k]));
-           lower_SAR[k] = inv_logit(logit(SAR[k]) - 1.96 * se_logit_SAR);
-           upper_SAR[k] = inv_logit(logit(SAR[k]) + 1.96 * se_logit_SAR);
+           se_SAR0[k] = sqrt(var_SAR);
+           se_logit_SAR = se_SAR0[k] / (SAR0[k] * (1 - SAR0[k]));
+           lower_SAR0[k] = inv_logit(logit(SAR0[k]) - 1.96 * se_logit_SAR);
+           upper_SAR0[k] = inv_logit(logit(SAR0[k]) + 1.96 * se_logit_SAR);
+
+           // Calculate SAR adjusted for covariates
+           for(m=0; m<cfg_pars.SAR_n_covariate_sets; m++)
+           {
+               p_esc = 1.0;
+               reset_1d_array_double(der, n_par, 0.0);
+               reset_1d_array_double(log_f_lp, n_p_mode, 0.0);
+               if(n_p2p_covariate > 0)  reset_1d_array_double(log_f_p2p, n_p2p_covariate, 0.0);
+               for(t=cfg_pars.effective_lower_infectious[k]; t<=cfg_pars.effective_upper_infectious[k]; t++)  
+               {
+                  if(n_p2p_covariate > 0)
+                  {
+                     r = t - cfg_pars.SAR_time_dep_lower;
+                     if(cfg_pars.SAR_n_covariate_sets > 0)  
+                        organize_p2p_covariate_4SAR(m, r, p2p_covariate);
+                     else
+                        reset_1d_array_double(p2p_covariate, n_p2p_covariate, 0.0);  
+                  }       
+                  covariate_effect = 0.0;
+                  for(j=0; j<n_p2p_covariate; j++)
+                      covariate_effect += p2p_covariate[j] * coeff_p2p[j];
+                  logit_f = lp[k] + covariate_effect;
+                  l = t - cfg_pars.lower_infectious;
+                  s = cfg_pars.prob_infectious[l];
+                  ff = inv_logit(logit_f) * s;
+                  f = 1 - ff;
+                  factor1 = ff / s;
+                  log_f_lp[k] = - ff * (1 - factor1) / f;
+                  for(j=0; j<n_p2p_covariate; j++)
+                     log_f_p2p[j] = log_f_lp[k] * p2p_covariate[j];
+                  p_esc *= f;
+                  //der is d(log p_esc) / d (p[k]) or d(log p_esc) / d coeff_p2p
+                  der[n_b_mode + k] += log_f_lp[k];
+                  for(j=0; j<n_p2p_covariate; j++)
+                     der[n_b_mode + n_p_mode + n_u_mode + n_q_mode + n_c2p_covariate + j] += log_f_p2p[j];
+                  //printf("t=%d  s=%e\n", t, s);
+                  //printf("   p2p covariates:");
+                  //for(j=0; j<n_p2p_covariate; j++)  printf("%e  ", p2p_covariate[j]);
+                  //printf("\n");
+                  //printf("   covariate_effect=%e  f=%e  p_esc=%e\n", covariate_effect, f, p_esc);
+               }
+               SAR[m][k] = 1.0 - p_esc;
+               for(j=0; j<n_par; j++) der_mat.data[k][j] = - p_esc * der[j];  //der1 is d(SAR) / d (lp[k]) or d(SAR) / d coeff_p2p
+               var_SAR = 0.0;
+               for(j=0; j<n_par; j++)
+               {
+                  for(l=0; l<n_par; l++)
+                  {
+                     var_SAR += der_mat.data[k][j] * der_mat.data[k][l] * var_logit.data[j][l];
+                  }
+               }  
+               se_SAR[m][k] = sqrt(var_SAR);
+               se_logit_SAR = se_SAR[m][k] / (SAR[m][k] * (1 - SAR[m][k]));
+               lower_SAR[m][k] = inv_logit(logit(SAR[m][k]) - 1.96 * se_logit_SAR);
+               upper_SAR[m][k] = inv_logit(logit(SAR[m][k]) + 1.96 * se_logit_SAR);
+           }
         } 
         //printf("Derivative matrix:\n");  
         //fmprintf(&der_mat);
-        if(n_p_mode > 0)   
-        for(j=0; j<cfg_pars.n_R0_multiplier; j++)
+
+
+        if(cfg_pars.R0_multiplier_provided > 0 && n_p_mode > 0)   
         {
-           R0[j] = 0.0;
+           //Calculate unadjusted R0
+           R0 = 0.0;
            reset_1d_array_double(der1, n_par, 0.0);
            reset_1d_array_double(der2, n_par, 0.0);
            for(k=0; k<n_p_mode; k++)
            {
-              R0[j] += cfg_pars.R0_multiplier[j * n_p_mode + k] * SAR[k];
-              for(l=0; l<n_par; l++)  der1[l] += cfg_pars.R0_multiplier[j * n_p_mode + k] * der_mat.data[k][l];  //der[k] is d(R0) / d (lp[k])
-              der2[k] += SAR[k];
+              R0 += cfg_pars.R0_multiplier[k] * SAR0[k];
+              for(l=0; l<n_par; l++)  der1[l] += cfg_pars.R0_multiplier[k] * der_mat.data[k][l];  //der[k] is d(R0) / d (lp[k])
+              der2[k] += SAR0[k];
            }
            var_R0 = 0.0;
            for(k=0; k<n_par; k++)
@@ -1540,11 +1596,41 @@ int core(int id_inc, int id_inf, int id_time)
                  var_R0 += der1[k] * der1[l] * var_logit.data[k][l];
               }
            }  
-           for(k=0; k<n_p_mode; k++)  var_R0 += der2[k] * der2[k] * cfg_pars.R0_multiplier_var[j * n_p_mode + k];
+           for(k=0; k<n_p_mode; k++)  var_R0 += der2[k] * der2[k] * cfg_pars.R0_multiplier_var[k];
 
-           se_R0[j] = sqrt(var_R0);
-           lower_R0[j] = exp( log(R0[j]) - 1.96 * se_R0[j] / R0[j]);
-           upper_R0[j] = exp( log(R0[j]) + 1.96 * se_R0[j] / R0[j]);
+           se_R0 = sqrt(var_R0);
+           lower_R0 = exp(log(R0) - 1.96 * se_R0 / R0);
+           upper_R0 = exp(log(R0) + 1.96 * se_R0 / R0);
+           
+           // Calculate R adjusted for covariates. Sometimes R0 also needs adjustment for covariates, e.g., for SARS-CoV-2,
+           // if you assume infectivity differs before and after symptom onset and estimate the difference via 
+           // a time-dependent covariate (basically an indicator for before vs. after symptom onset),
+           // then you need to adjust for that covariate to cacculate a meaningful R0.
+           for(m=0; m<cfg_pars.SAR_n_covariate_sets; m++)
+           {
+               R0_adj[m] = 0.0;
+               reset_1d_array_double(der1, n_par, 0.0);
+               reset_1d_array_double(der2, n_par, 0.0);
+               for(k=0; k<n_p_mode; k++)
+               {
+                  R0_adj[m] += cfg_pars.R0_multiplier[k] * SAR[m][k];
+                  for(l=0; l<n_par; l++)  der1[l] += cfg_pars.R0_multiplier[k] * der_mat.data[k][l];  //der[k] is d(R0) / d (lp[k])
+                  der2[k] += SAR[m][k];
+               }
+               var_R0 = 0.0;
+               for(k=0; k<n_par; k++)
+               {
+                  for(l=0; l<n_par; l++)
+                  {
+                     var_R0 += der1[k] * der1[l] * var_logit.data[k][l];
+                  }
+               }  
+               for(k=0; k<n_p_mode; k++)  var_R0 += der2[k] * der2[k] * cfg_pars.R0_multiplier_var[k];
+
+               se_R0_adj[m] = sqrt(var_R0);
+               lower_R0_adj[m] = exp( log(R0_adj[m]) - 1.96 * se_R0_adj[m] / R0_adj[m]);
+               upper_R0_adj[m] = exp( log(R0_adj[m]) + 1.96 * se_R0_adj[m] / R0_adj[m]);
+           }   
         }
            
         for(k=0; k<n_u_mode; k++)
@@ -1666,83 +1752,127 @@ int core(int id_inc, int id_inf, int id_time)
            if(cfg_pars.stat_test == 1)
               fprintf(file, "\n# P-value for testing p=%f\n", p_value);
      
-           fprintf(file, "\n# Estimates of b\n");
-           for(k=0; k<n_b_mode; k++)
-              fprintf(file, "%e,  %e,  %e,  %e\n", b[k], se_b[k], lower_b[k], upper_b[k]);
-           
-           fprintf(file, "\n# Estimates of p\n");
-           for(k=0; k<n_p_mode; k++)
-              fprintf(file, "%e,  %e,  %e,  %e\n", p[k], se_p[k], lower_p[k], upper_p[k]);
-              
-           fprintf(file, "\n# Estimates of u\n");
-           for(k=0; k<n_u_mode; k++)
-              fprintf(file, "%e,  %e,  %e,  %e\n", u[k], se_u[k], lower_u[k], upper_u[k]);
-              
-           fprintf(file, "\n# Estimates of q\n");
-           for(k=0; k<n_q_mode; k++)
-              fprintf(file, "%e,  %e,  %e,  %e\n", q[k], se_q[k], lower_q[k], upper_q[k]);
-              
-           fprintf(file, "\n# Estimates of odds ratios for c2p exposure\n");
-           for(k=0; k<n_c2p_covariate; k++)
+           if(n_b_mode > 0)
            {
-              p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_c2p[k] / se_coeff_c2p[k]), 0, 1));
-              fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", OR_c2p[k], se_OR_c2p[k], lower_OR_c2p[k], upper_OR_c2p[k], p_value_OR);
-           }   
-           
-           fprintf(file, "\n# Estimates of odds ratios for p2p exposure\n");
-           for(k=0; k<n_p2p_covariate; k++)
+              fprintf(file, "\n# Estimates of b\n");
+              for(k=0; k<n_b_mode; k++)
+                 fprintf(file, "%e,  %e,  %e,  %e\n", b[k], se_b[k], lower_b[k], upper_b[k]);
+           }
+           if(n_p_mode > 0)
            {
-              p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_p2p[k] / se_coeff_p2p[k]), 0, 1));
-              fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", OR_p2p[k], se_OR_p2p[k], lower_OR_p2p[k], upper_OR_p2p[k], p_value_OR);
-           }   
+              fprintf(file, "\n# Estimates of p\n");
+              for(k=0; k<n_p_mode; k++)
+                 fprintf(file, "%e,  %e,  %e,  %e\n", p[k], se_p[k], lower_p[k], upper_p[k]);
+           }
+           if(n_u_mode > 0)
+           {
+              fprintf(file, "\n# Estimates of u\n");
+              for(k=0; k<n_u_mode; k++)
+                 fprintf(file, "%e,  %e,  %e,  %e\n", u[k], se_u[k], lower_u[k], upper_u[k]);
+           }
+           if(n_q_mode > 0)
+           {
+              fprintf(file, "\n# Estimates of q\n");
+              for(k=0; k<n_q_mode; k++)
+                 fprintf(file, "%e,  %e,  %e,  %e\n", q[k], se_q[k], lower_q[k], upper_q[k]);
+           }
+           if(n_c2p_covariate > 0)
+           {    
+              fprintf(file, "\n# Estimates of odds ratios for c2p exposure\n");
+              for(k=0; k<n_c2p_covariate; k++)
+              {
+                 p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_c2p[k] / se_coeff_c2p[k]), 0, 1));
+                 fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", OR_c2p[k], se_OR_c2p[k], lower_OR_c2p[k], upper_OR_c2p[k], p_value_OR);
+              }   
+           }
+           if(n_p2p_covariate > 0)
+           {    
+              fprintf(file, "\n# Estimates of odds ratios for p2p exposure\n");
+              for(k=0; k<n_p2p_covariate; k++)
+              {
+                 p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_p2p[k] / se_coeff_p2p[k]), 0, 1));
+                 fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", OR_p2p[k], se_OR_p2p[k], lower_OR_p2p[k], upper_OR_p2p[k], p_value_OR);
+              }   
+           }
+           if(n_pat_covariate > 0)
+           {    
+              fprintf(file, "\n# Estimates of odds ratios for pathogenicity\n");
+              for(k=0; k<n_pat_covariate; k++)
+              {
+                 p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_pat[k] / se_coeff_pat[k]), 0, 1));
+                 fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", 
+                         OR_pat[k], se_OR_pat[k], lower_OR_pat[k], upper_OR_pat[k], p_value_OR);
+              }   
+           }
 
-           fprintf(file, "\n# Estimates of odds ratios for pathogenicity\n");
-           for(k=0; k<n_pat_covariate; k++)
+           if(n_imm_covariate > 0)
+           {    
+              fprintf(file, "\n# Estimates of odds ratios for pre-immunity level\n");
+              for(k=0; k<n_imm_covariate; k++)
+              {
+                 p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_imm[k] / se_coeff_imm[k]), 0, 1));
+                 fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", 
+                         OR_imm[k], se_OR_imm[k], lower_OR_imm[k], upper_OR_imm[k], p_value_OR);
+              }   
+           }
+           if(n_b_mode > 0 && cfg_pars.CPI_duration > 0)
            {
-              p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_pat[k] / se_coeff_pat[k]), 0, 1));
-              fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", 
-                      OR_pat[k], se_OR_pat[k], lower_OR_pat[k], upper_OR_pat[k], p_value_OR);
-           }   
-
-           fprintf(file, "\n# Estimates of odds ratios for pre-immunity level\n");
-           for(k=0; k<n_imm_covariate; k++)
+              fprintf(file, "\n# Estimates of CPI\n");
+              for(k=0; k<n_b_mode; k++)
+              {
+                 fprintf(file, "%e,  %e,  %e,  %e\n", CPI[k], se_CPI[k], lower_CPI[k], upper_CPI[k]);
+              }   
+           }
+           if(n_p_mode > 0)
            {
-              p_value_OR = 2.0 * (1.0 - pnorm(fabs(coeff_imm[k] / se_coeff_imm[k]), 0, 1));
-              fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f,  %20.8f\n", 
-                      OR_imm[k], se_OR_imm[k], lower_OR_imm[k], upper_OR_imm[k], p_value_OR);
-           }   
-
-           fprintf(file, "\n# Estimates of CPI\n");
-           for(k=0; k<n_b_mode; k++)
-           {
-              fprintf(file, "%e,  %e,  %e,  %e\n", CPI[k], se_CPI[k], lower_CPI[k], upper_CPI[k]);
-           }   
-           
-           fprintf(file, "\n# Estimates of SAR\n");
-           if(cfg_pars.silent_run == 0)  printf("Estimates of SAR\n");
-           for(k=0; k<n_p_mode; k++)
-           {
-              fprintf(file, "%e,  %e,  %e,  %e\n", SAR[k], se_SAR[k], lower_SAR[k], upper_SAR[k]);
-           }   
-
-           fprintf(file, "\n# Estimates of R0\n");
-           if(cfg_pars.silent_run == 0)  printf("Estimates for R0:");
-           for(j=0; j<cfg_pars.n_R0_multiplier; j++)
-           {
-              fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f\n", R0[j], se_R0[j], lower_R0[j], upper_R0[j]);
+              fprintf(file, "\n# Estimates of unadjusted SAR\n");
+              for(k=0; k<n_p_mode; k++)
+              {
+                 fprintf(file, "%e,  %e,  %e,  %e\n", SAR0[k], se_SAR0[k], lower_SAR0[k], upper_SAR0[k]);
+              }
+              if(cfg_pars.SAR_n_covariate_sets > 0)
+              {
+                 fprintf(file, "\n# Estimates of SAR adjusted for covariates\n");
+                 for(m=0; m < cfg_pars.SAR_n_covariate_sets; m++)
+                 {
+                    fprintf(file, "\n# Covariate set %d\n", m);
+                    for(k=0; k<n_p_mode; k++)
+                    {
+                       fprintf(file, "%e,  %e,  %e,  %e\n", SAR[m][k], se_SAR[m][k], lower_SAR[m][k], upper_SAR[m][k]);
+                    }   
+                 }
+              }
+              if(cfg_pars.R0_multiplier_provided > 0)
+              {
+                 fprintf(file, "\n# Estimates of unadjusted R0\n");
+                 fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f\n", R0, se_R0, lower_R0, upper_R0);
+                 if(cfg_pars.SAR_n_covariate_sets > 0)
+                 {
+                    fprintf(file, "\n# Estimates of R0 adjusted for covariates\n");
+                    for(m=0; m<cfg_pars.SAR_n_covariate_sets; m++)
+                    {
+                       fprintf(file, "\n# Covariate set %d\n", m);
+                       fprintf(file, "%20.8f,  %20.8f,  %20.8f,  %20.8f\n", R0_adj[m], se_R0_adj[m], lower_R0_adj[m], upper_R0_adj[m]);
+                    }
+                 }
+              }   
            }
 
            fprintf(file, "\n#Log-likelihood\n");
            fprintf(file, "%20.8f\n", log_likelihood);
            
-           fprintf(file, "\n#Covariance Matrix Estimates\n");
-           fmfprintf(file, &var, 1);
+           if(cfg_pars.skip_variance == 0)   
+           {
+              fprintf(file, "\n#Covariance Matrix Estimates\n");
+              fmfprintf(file, &var, 1);
      
-           fprintf(file, "\n#Covariance Matrix Estimates for logit(b), logit(p) and log(OR)\n");
-           fmfprintf(file, &var_logit, 1);
+              fprintf(file, "\n#Covariance Matrix Estimates for logit(b), logit(p) and log(OR)\n");
+              fmfprintf(file, &var_logit, 1);
+           }   
         }
         fclose(file);
 
+        // output unadjusted SAR and R0 to separate files.
         if(cfg_pars.simplify_output_SAR == 1 && n_p_mode > 0)
         {
            sprintf(file_name, "%soutput_SAR.txt", cfg_pars.path_out);
@@ -1751,24 +1881,17 @@ int core(int id_inc, int id_inf, int id_time)
            fprintf(file, "%6d  %3d  %3d  ", serial_number, id_inc, id_inf); 
            if(cfg_pars.R0_divide_by_time == 1)  fprintf(file, "%d  ", id_time);
            for(k=0; k<n_p_mode; k++)
-              fprintf(file, "%e  %e  %e  %e\n", SAR[k], se_SAR[k], lower_SAR[k], upper_SAR[k]);
+              fprintf(file, "  %e  %e  %e  %e", SAR0[k], se_SAR0[k], lower_SAR0[k], upper_SAR0[k]);
+           fprintf(file, "\n");
            fclose(file);   
         }
         if(cfg_pars.simplify_output_R0 == 1 && n_p_mode > 0)
         {
-           //for(k=0; k<n_p_mode; k++)
-           //   printf("%e  %e  %e  %e\n", SAR[k], se_SAR[k], lower_SAR[k], upper_SAR[k]);
-           //printf("n_p_mode=%d  n_R0_multiplier=%d\n", cfg_pars.n_p_mode, cfg_pars.n_R0_multiplier);   
-           //for(j=0; j<cfg_pars.n_R0_multiplier; j++)
-           //   printf("%e  %e  %e  %e\n", R0[j], se_R0[j], lower_R0[j], upper_R0[j]);
-           //exit(0);   
            sprintf(file_name, "%soutput_R0.txt", cfg_pars.path_out);
            if((file = fopen(file_name, "a")) == NULL)
               file = fopen(file_name, "w");
            fprintf(file, "%6d  %3d  %3d  %6d", serial_number, id_inc, id_inf, id_time);   
-           for(j=0; j<cfg_pars.n_R0_multiplier; j++)
-              fprintf(file, "  %e  %e  %e  %e", R0[j], se_R0[j], lower_R0[j], upper_R0[j]);
-           fprintf(file, "\n");
+           fprintf(file, "  %e  %e  %e  %e\n", R0, se_R0, lower_R0, upper_R0);
            fclose(file);   
         }
      } //if(estimation_error_type == 0 && skip_output == 0)

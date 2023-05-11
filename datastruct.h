@@ -104,9 +104,12 @@ typedef struct risk_group
 // as INFINITY for the former and -INFINITY for the latter. For type 2, infection=yes, but 
 // the infectiousness onset day is not observable, and therefore type 2 corresponds to many possible
 // outcomes, each defined by a possible infectiousness onset day. 
-// STATUS is a structure built for a community. The array "status" stores a possible combination of status
-// of people with uncertain status in the community. In each of these people, there is an 2 by M array of possible
-// outcomes, M being the number of possible outcomes. Each element of the array "status" is an integer
+// STATE is a structure built for a community. The array "states" stores a possible combination of states
+// of people with uncertain status in the community. For each person with imputaiton needed, there is an 2 by M 
+// Array of Possible Outcomes (APO) in the data structure person->possible_states. M is the number of possible outcomes. 
+// The first row of APO indicates day_ill, the peak infectivity time. It is -infnity for preimmune and infinity for escape.
+// The second row of APO is a binary indiciator, 1 for symptomatic and 0 for asymptomatic.
+// Each element of the array "states" is an integer
 // refering to the location of an assigned outcome for the corresponding person.
 // "log_L_ini" and "log_L_cur" are log-likelihood of the community evaluated at the initial and current
 // estimates of parameters. NOTE, initial estimates here are not the same as the initial parameter values
@@ -367,15 +370,15 @@ typedef struct {
                                    // is long enough, the impact of right-censoring is very small.
     int CPI_duration; //duration of the epidemic for calculating CPI
     // the following are covariate values used for calculating SAR
-    int SAR_covariate_provided;
-    double *SAR_sus_time_ind_covariate;
-    double *SAR_inf_time_ind_covariate;
+    int SAR_n_covariate_sets;
+    double **SAR_sus_time_ind_covariate;
+    double **SAR_inf_time_ind_covariate;
     int SAR_time_dep_lower;
     int SAR_time_dep_upper;
-    MATRIX SAR_sus_time_dep_covariate;
-    MATRIX SAR_inf_time_dep_covariate;
+    double ***SAR_sus_time_dep_covariate;
+    double ***SAR_inf_time_dep_covariate;
     //The following two quantities are used for calculating R0 
-    int n_R0_multiplier; // number of sets of multipliers
+    int R0_multiplier_provided; // number of sets of multipliers
     double *R0_multiplier; // R0_multiplier * SAR is the estimated R0 accounting for transmission in and out of household. 
                           // One possible such multiplier is given in Yang et al (2009)
     double *R0_multiplier_var; // variance of R0_multiplier, used to calculate variance of R0
@@ -403,21 +406,25 @@ typedef struct {
     int skip_output;
     int silent_run; //When TranStat is running, some  messages are shown. These messages are likely not wanted
                     // in simulations. User can surpress the messages using this switch.
-    int write_error_log;                
+    int write_error_log;  
+    int output_simulation_data;              
 }CFG_PARS;
 
 //We define global variables here. These variables are used throughout the running of TranStat.
-  double *b, *p, *u, *q, *lb, *lp, *lu, *lq, *CPI, *SAR, *R0;
+  double *b, *p, *u, *q, *lb, *lp, *lu, *lq;
   double *coeff_c2p, *coeff_p2p, *coeff_pat, *coeff_imm, *OR_c2p, *OR_p2p, *OR_pat, *OR_imm;
   double *se_b, *se_p, *se_u, *se_q, *se_coeff_c2p, *se_coeff_p2p, *se_coeff_pat, *se_coeff_imm;
   double *se_lb, *se_lp, *se_lu, *se_lq, *se_OR_c2p, *se_OR_p2p, *se_OR_pat, *se_OR_imm;
-  double *se_CPI, *se_SAR, *se_R0;
   double *lower_b, *lower_p, *lower_u, *lower_q;
   double *lower_OR_c2p, *lower_OR_p2p, *lower_OR_pat, *lower_OR_imm;
-  double *lower_CPI, *lower_SAR, *lower_R0;
   double *upper_b, *upper_p, *upper_u, *upper_q;
   double *upper_OR_c2p, *upper_OR_p2p, *upper_OR_pat, *upper_OR_imm;
-  double *upper_CPI, *upper_SAR, *upper_R0;
+  double *CPI, *se_CPI, *lower_CPI, *upper_CPI;
+  double *SAR0, *se_SAR0, *lower_SAR0, *upper_SAR0;
+  double **SAR, **se_SAR, **lower_SAR, **upper_SAR;
+  double R0, se_R0, lower_R0, upper_R0;
+  double *R0_adj, *se_R0_adj, *lower_R0_adj, *upper_R0_adj;
+
   
   double *ee, *cum_ee;
   double *log_f_lb, *log_f_c2p, *log_f_lp, *log_f_p2p;

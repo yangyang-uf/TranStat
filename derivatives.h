@@ -640,6 +640,9 @@ int community_score(COMMUNITY *community, double *par_effective, double *log_lik
      }
   }
 
+  //printf("Inside community_score()\n");
+  //show_par_effective(par_effective, NULL);
+
   for(i=0; i<n_par_equiclass; i++)
   {
      for(j=0; j<cfg_pars.par_equiclass[i].size; j++)
@@ -738,6 +741,8 @@ int community_score(COMMUNITY *community, double *par_effective, double *log_lik
               start_day = max(community->day_epi_start, community->earliest_idx_day_ill - cfg_pars.max_incubation + 1);
            else  start_day = community->day_epi_start;
            stop_day = max_stop_day;
+           //printf("community=%d  day_epi_start=%d earliest_idx_day_ill=%d \n", community->id, community->day_epi_start, community->earliest_idx_day_ill);
+           //printf("id=%d start_day=%d  stop_day=%d\n", person->id, start_day, stop_day);
            for(t=start_day; t<=stop_day; t++)
            {
               r = t - start_day;
@@ -821,7 +826,7 @@ int community_score(COMMUNITY *community, double *par_effective, double *log_lik
               for(k=0; k<n_c2p_covariate; k++) log_ee_c2p[r][k] = log_e_c2p[k];
               for(k=0; k<n_p2p_covariate; k++) log_ee_p2p[r][k] = log_e_p2p[k];
 
-
+              //printf("t=%d  log_e_lb=%e\n", t, log_e_lb[0]);
               temp += log(ee[r]);
               cum_log_ee[r] = temp;
 
@@ -1098,6 +1103,8 @@ int community_score(COMMUNITY *community, double *par_effective, double *log_lik
                        for(k=0; k<n_c2p_covariate; k++) cum_log_e_c2p[k] = 0.0; 
                        for(k=0; k<n_p2p_covariate; k++) cum_log_e_p2p[k] = 0.0; 
 
+                       printf("Person id=%d  start_day=%d  day_ill=%d  inf1=%d  inf2=%d\n", 
+                               person->id, start_day, person->day_ill, inf1, inf2);
 
                        for(t=inf1; t<=inf2; t++)
                        {
