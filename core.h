@@ -150,11 +150,11 @@ int core(int id_inc, int id_inf, int id_time)
   printf("%d  %d\n ", cfg_pars.effective_lower_infectious[0], cfg_pars.effective_upper_infectious[0]);
   printf("skip_variance=%d  skip_output=%d\n", cfg_pars.skip_variance, cfg_pars.skip_output);
   
-  printf("SAR calculation: time range for time-dependent covariates input: lower=%d, upper=%d\n", cfg_pars.SAR_time_dep_lower, cfg_pars.SAR_time_dep_upper);
-  printf("SAR calculation: time-dependent covariates of susceptible:\n");
-  fmprintf(&cfg_pars.SAR_sus_time_dep_covariate);
-  printf("SAR calculation: time-dependent covariates of infectious:\n");
-  fmprintf(&cfg_pars.SAR_inf_time_dep_covariate);
+  //printf("SAR calculation: time range for time-dependent covariates input: lower=%d, upper=%d\n", cfg_pars.SAR_time_dep_lower, cfg_pars.SAR_time_dep_upper);
+  //printf("SAR calculation: time-dependent covariates of susceptible:\n");
+  //fmprintf(&cfg_pars.SAR_sus_time_dep_covariate);
+  //printf("SAR calculation: time-dependent covariates of infectious:\n");
+  //fmprintf(&cfg_pars.SAR_inf_time_dep_covariate);
   goto end;
   */
   
@@ -430,7 +430,7 @@ int core(int id_inc, int id_inf, int id_time)
      }   
      n_record = get_size(file);
      rewind(file); 
-     printf("n_time_ind_covariate=%d,  n_record=%d\n", n_time_ind_covariate, n_record);
+     //printf("n_time_ind_covariate=%d,  n_record=%d\n", n_time_ind_covariate, n_record);
      for(m=0; m<n_record; m++)
      {
         fscanf(file, "%d", &i); 
@@ -538,9 +538,9 @@ int core(int id_inc, int id_inf, int id_time)
   	     printf("To generate c2p contact history automatically, need n_b_mode=1\n");
   	     exit(0);
      }
-  	  printf("Auto-generate c2p contact history\n");
-  	  if(cfg_pars.common_contact_history_within_community == 1)
-  	  {
+  	 if(cfg_pars.silent_run == 0) printf("Auto-generate c2p contact history\n");
+  	 if(cfg_pars.common_contact_history_within_community == 1)
+  	 {
         for(h=0; h<n_community; h++)
         {
            if(community[h].size > 0)
@@ -569,7 +569,7 @@ int core(int id_inc, int id_inf, int id_time)
   	     printf("To generate p2p contact history automatically, need common_contact_history_within_community= 1 AND n_p_mode=1\n");
   	     exit(0);
      }
-  	  printf("Auto-generate p2p contact history\n");
+  	 if(cfg_pars.silent_run == 0)  printf("Auto-generate p2p contact history\n");
      for(h=0; h<n_community; h++)
      if(community[h].size > 0)
         add_p2p_contact_history_to_community(h, community[h].day_epi_start, community[h].day_epi_stop, 0, 0.0);
@@ -812,7 +812,7 @@ int core(int id_inc, int id_inf, int id_time)
      
   //begin iterations for simulation. If this is not a simulation, there will be only one loop.
   n_iter = (cfg_pars.simulation == 1)? cfg_pars.n_simulation : 1;
-  printf("n_iter=%d\n", n_iter);
+  //printf("n_iter=%d\n", n_iter);
   for(ITER=0; ITER<n_iter; ITER++)
   {
      if(cfg_pars.simulation == 1 && cfg_pars.silent_run >= 0)  printf("\n SIMULATION: %d \n\n", ITER);

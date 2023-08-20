@@ -284,7 +284,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
         }
      }
   } 
-  /*
+  /* The folowing code is used when extracting case-ascertained housheolds form prespectively simulated outbreak
   if(cfg_pars.adjust_for_left_truncation == 1)
   {
   
@@ -435,6 +435,7 @@ int simulate(int goodness_of_fit, double *est) // est is vector of parameter est
      printf("Secondary attack rate: %d/%d=%e\n", n_sym_sec+n_asym_sec, n_sym_sec+n_asym_sec+n_esc, (double) (n_sym_sec+n_asym_sec) / (n_sym_sec+n_asym_sec+n_esc));
      printf("pathogenicity: %d/%d=%e\n", n_sym_sec, (n_sym_sec+n_asym_sec), (double) n_sym_sec/(n_sym_sec+n_asym_sec));
   }
+
   free(c2p_covariate); 
   free(p2p_covariate);
   return(0);

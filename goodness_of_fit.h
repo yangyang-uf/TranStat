@@ -115,6 +115,7 @@ int goodness_of_fit_community(int id_community, double *est, int *at_risk, doubl
 
   h = id_community;
   
+  //printf("likelihood_start_day=%d  day_epi_start=%d  day_epi_stop=%d\n", likelihood_start_day, community[h].day_epi_start, community[h].day_epi_stop);
   if(community[h].size > 0 && community[h].ignore == 0)
   {
      length = community[h].day_epi_stop - community[h].day_epi_start + 1;
@@ -419,8 +420,9 @@ int goodness_of_fit_community(int id_community, double *est, int *at_risk, doubl
                     for(t=likelihood_start_day; t<inf1; t++)
                     {
                        r = t - likelihood_start_day;
-                       if(at_risk != NULL)  at_risk[r] += person->weight;
+                       //if(person->id == 100) printf("person %d: t=%d  r=%d  weight=%e  at risk=%d\n", person->id, t, r, person->weight, at_risk[r]);
                        rr = t - community[h].day_epi_start;
+                       if(at_risk != NULL)  at_risk[rr] += person->weight;
                        expected_INF_freq[rr] += person->weight * (-log(ee[r]));
                        for(j=0; j<n_b_mode; j++) score_lb[rr][j] += person->weight * (-log_ee_lb[r][j]); 
                        for(j=0; j<n_p_mode; j++) score_lp[rr][j] += person->weight * (-log_ee_lp[r][j]); 
@@ -445,8 +447,9 @@ int goodness_of_fit_community(int id_community, double *est, int *at_risk, doubl
                     for(t=inf1; t<=inf2; t++)
                     {
                        r = t - likelihood_start_day;
-                       if(at_risk != NULL)  at_risk[r] += person->weight;
+                       //if(person->id == 100) printf("person %d: t=%d  r=%d  weight=%e  at risk=%d\n", person->id, t, r, person->weight, at_risk[r]);
                        rr = t - community[h].day_epi_start;
+                       if(at_risk != NULL)  at_risk[rr] += person->weight;
                        l = t - inf1;
                        //factor1 = ((1.0 - sum_weight - weight[l]) * 1 + weight[l] * 0.5);
                        factor1 = 1.0 - sum_weight;// prob of at-risk
@@ -475,8 +478,9 @@ int goodness_of_fit_community(int id_community, double *est, int *at_risk, doubl
                     {
                        r = t - likelihood_start_day;
                        //if(h == 25)  printf("r=%d\n", r);
-                       if(at_risk != NULL)  at_risk[r] += person->weight;
+                       //if(person->id == 101) printf("person %d: t=%d  r=%d  weight=%e  at risk=%d\n", person->id, t, r, person->weight, at_risk[r]);
                        rr = t - community[h].day_epi_start;
+                       if(at_risk != NULL)  at_risk[rr] += person->weight;
                        //if(h==25)  printf("t=%d  r=%d  rr=%d\n", t, r, rr);
                        expected_INF_freq[rr] += person->weight *  (-log(ee[r]));
                        for(j=0; j<n_b_mode; j++) score_lb[rr][j] += person->weight * (-log_ee_lb[r][j]); 
@@ -518,8 +522,9 @@ int goodness_of_fit_community(int id_community, double *est, int *at_risk, doubl
                     for(t=inf1; t<=stop_day; t++)
                     {
                        r = t - likelihood_start_day;
-                       if(at_risk != NULL)  at_risk[r] += person->weight;
+                       //if(person->id == 101) printf("person %d: t=%d  r=%d  weight=%e  at risk=%d\n", person->id, t, r, person->weight, at_risk[r]);
                        rr = t - community[h].day_epi_start;
+                       if(at_risk != NULL)  at_risk[rr] += person->weight;
                        //if(h==25)  printf("t=%d  r=%d  rr=%d\n", t, r, rr);
                        l = t - inf1;
                        //factor1 = ((1.0 - sum_weight - weight[l]) * 1 + weight[l] * 0.5);
@@ -541,8 +546,8 @@ int goodness_of_fit_community(int id_community, double *est, int *at_risk, doubl
                     for(t=likelihood_start_day; t<=stop_day; t++)  
                     {
                        r = t - likelihood_start_day;
-                       if(at_risk != NULL)  at_risk[r] += person->weight;
                        rr = t - community[h].day_epi_start;
+                       if(at_risk != NULL)  at_risk[rr] += person->weight;
                        expected_INF_freq[rr] += person->weight * (-log(ee[r]));
                        for(j=0; j<n_b_mode; j++) score_lb[rr][j] += person->weight * (-log_ee_lb[r][j]); 
                        for(j=0; j<n_p_mode; j++) score_lp[rr][j] += person->weight * (-log_ee_lp[r][j]); 
@@ -743,15 +748,17 @@ int goodness_of_fit(int id_inc, int id_inf, int id_time, double *est, COMMUNITY 
    //fclose(file1);
    scalar_addition(&score, 0.0, 1.0/size_sample_states, &score);
    total_obs_INF_freq = total_exp_INF_freq = 0;
+   //printf("size_sample_states=%d\n", size_sample_states);
    for(k=0; k<max_epi_duration; k++) 
    { 
-      //printf("k=%d: obs=%e,  exp=%e, sum_obs=%e,  sum_exp=%e\n", k, obs_INF_freq[k], exp_INF_freq[k], sum_obs_INF_freq[k], sum_exp_INF_freq[k]);
+      //printf("k=%d: at risk=%d obs=%e,  exp=%e, sum_obs=%e,  sum_exp=%e\n", k, at_risk[k], obs_INF_freq[k], exp_INF_freq[k], sum_obs_INF_freq[k], sum_exp_INF_freq[k]);
       sum_obs_INF_freq[k] /= size_sample_states;
       sum_exp_INF_freq[k] /= size_sample_states;
       total_obs_INF_freq += sum_obs_INF_freq[k];
       total_exp_INF_freq += sum_exp_INF_freq[k];
    }
    if(cfg_pars.silent_run == 0)  printf("total_obs_INF_freq=%e,  total_exp_INF_freq=%e\n", total_obs_INF_freq, total_exp_INF_freq);
+   
    if(cfg_pars.skip_variance == 0)
    {
       for(k=0; k<max_epi_duration; k++) 
@@ -797,6 +804,7 @@ int goodness_of_fit(int id_inc, int id_inf, int id_time, double *est, COMMUNITY 
       }
    }
    //count_cases();
+   /*
    n_sim = 0;
    initialize_matrix(&sim_INF_freq);
    if(n_sim > 0)   inflate_matrix(&sim_INF_freq, max_epi_duration, n_sim, 0);
@@ -855,7 +863,8 @@ int goodness_of_fit(int id_inc, int id_inf, int id_time, double *est, COMMUNITY 
          sim_lower[r] = quantile_double(sim_INF_freq.data[r], n_sim, 0.025);
          sim_upper[r] = quantile_double(sim_INF_freq.data[r], n_sim, 0.975);
       }   
-   }   
+   }
+   */
    //sprintf(file_name, "%soutput_fitted_sim_%d.txt", cfg_pars.path_out, serial_number);
    //if((file = fopen(file_name, "a")) == NULL)
    //   file = fopen(file_name, "w");
@@ -866,6 +875,7 @@ int goodness_of_fit(int id_inc, int id_inf, int id_time, double *est, COMMUNITY 
    //   fprintf(file, "\n");
    //}   
    //fclose(file);                
+   
    sprintf(file_name, "%soutput_goodness.txt", cfg_pars.path_out);
    if((file = fopen(file_name, "a")) == NULL)
       file = fopen(file_name, "w");
@@ -886,12 +896,15 @@ int goodness_of_fit(int id_inc, int id_inf, int id_time, double *est, COMMUNITY 
       mean_inc = 0.0;
       for(j=cfg_pars.min_incubation; j<=cfg_pars.max_incubation; j++)
          mean_inc += cfg_pars.prob_incubation[j - cfg_pars.min_incubation] * j;
-      t = id_time - floor(cfg_pars.R0_window_size/2) + lround(mean_inc);
+      // we tried several shifts, early epidemic and peak epidemic cannot be equally well fitted
+      // we set the shift to floor(cfg_pars.R0_window_size/2) - 1 empirircally based on SanAndres Zika data.
+      // we may need to tune it for other epidemics.
+      t = id_time - floor(cfg_pars.R0_window_size/2) + 1;// + lround(mean_inc);
       k = t - community[0].day_epi_start;
+      printf("output goodness of fit: id_time=%d  t=%d  k=%d\n", id_time, t, k);
       fprintf(file, "%6d  %3d  %3d  %6d  %15d  %18.3e  %18.3e\n", serial_number, id_inc, id_inf, t, at_risk[k], sum_obs_INF_freq[k], sum_exp_INF_freq[k]);
    }
    fclose(file);
-   
 
 end:
    deflate_matrix(&subvar_logit);

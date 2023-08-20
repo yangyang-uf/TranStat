@@ -2427,15 +2427,16 @@ int estimation(int id_inc, int id_inf, int id_time, double *est, double *logL, M
         par[j] =  cfg_pars.par_fixed_value[i];
      }
   }
-  if(cfg_pars.silent_run >= 0) 
+  for(j=0; j<n_par; j++)
+  {
+     if(j < n_b_mode + n_p_mode + n_u_mode + n_q_mode)  est[j] = inv_logit(par[j]);
+     else est[j] = exp(par[j]);
+  }
+  if(cfg_pars.silent_run == 0) 
   {
      printf("Parameter estimates: ");
      for(j=0; j<n_par; j++)
-     {
-        if(j < n_b_mode + n_p_mode + n_u_mode + n_q_mode)  est[j] = inv_logit(par[j]);
-        else est[j] = exp(par[j]);
         printf("%e  ", est[j]);
-     }
      printf("\n");
   }
   TIME_VARIANCE_SEC = TIME_VARIANCE_CPU = 0;
