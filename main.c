@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
   mt_init(seed);
   
-  printf("serial_number=%d\n", serial_number);
+  //printf("serial_number=%d\n", serial_number);
   if((file = fopen("config.file", "r")) == NULL)
   {
     printf("couldn't open config.file\n");
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
   cfg_pars = get_cfg_pars(file);
   fclose(file);
   
-  sprintf(file_name, "%soutput_%d.txt", cfg_pars.path_out, serial_number);
+  //sprintf(file_name, "%soutput_%d.txt", cfg_pars.path_out, serial_number);
   //if( fopen(file_name, "r") != NULL )  
   //{
   //   fclose(file); 
@@ -110,6 +110,8 @@ int main(int argc, char *argv[])
   //   else  sprintf(command, "rm -f %soutput_%d.txt", cfg_pars.path_out, serial_number);
   //   system(command);
   //}
+  //printf("path.in=%s\n", cfg_pars.path_in);
+  //printf("path.out=%s\n", cfg_pars.path_out);
   for(i=0; i<cfg_pars.n_inc; i++)
   {
      cfg_pars.max_incubation = cfg_pars.max_inc[i];
@@ -133,7 +135,7 @@ int main(int argc, char *argv[])
            goto main_end;
         }   
            
-        printf("min_inc=%d  max_inc=%d  lower_inf=%d  upper_inf=%d\n", cfg_pars.min_incubation, cfg_pars.max_incubation, cfg_pars.lower_infectious, cfg_pars.upper_infectious);
+        //printf("min_inc=%d  max_inc=%d  lower_inf=%d  upper_inf=%d\n", cfg_pars.min_incubation, cfg_pars.max_incubation, cfg_pars.lower_infectious, cfg_pars.upper_infectious);
         len_inf = cfg_pars.upper_inf[j] - cfg_pars.lower_inf[j] + 1;
         cfg_pars.prob_infectious = (double *)malloc((size_t) (len_inf * sizeof(double)));
         for(l = 0 ; l < len_inf ; l++)
@@ -164,7 +166,8 @@ int main(int argc, char *argv[])
         }  
         // to get R0 estimates for a series of cut-point days. We assume p is constant before and after the cut-point but with different values.
         // 
-        printf("R0_divide_by_time=%d\n", cfg_pars.R0_divide_by_time);
+        //printf("R0_divide_by_time=%d\n", cfg_pars.R0_divide_by_time);
+        //printf("R0_divide_start=%d  R0_divide_stopc=%d  R0_window_size=%d\n", cfg_pars.R0_divide_start, cfg_pars.R0_divide_stop, cfg_pars.R0_window_size);
         if(cfg_pars.R0_divide_by_time == 1) 
         {
            if(!(cfg_pars.n_p_mode == 2 | cfg_pars.n_p_mode == 3))
