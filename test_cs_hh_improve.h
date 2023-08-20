@@ -61,7 +61,7 @@ int resampling_cs_hh(int n_resampling, double stat_obs, double *pvalue)
   int n_eligible_subject, n_eligible_case, n_eligible_var_case, n_eligible_fix_case;
   int *eligible, *eligible_subjects, *eligible_cases, *eligible_var_cases, *eligible_fix_cases;
   int *day_ill_var, *day_exit_var, *day_ill_fix, *day_exit_fix, *offset_fix;
-  int *sample, *sample_eligible_cases;
+  unsigned int *sample, *sample_eligible_cases;
   int *allocate, *candidate;
   double *prob;
   double *est_alternative, *est_null;
@@ -193,8 +193,8 @@ int resampling_cs_hh(int n_resampling, double stat_obs, double *pvalue)
   est_null = (double *) malloc((size_t) (n_par_null * sizeof(double)));  
  
   
-  sample = (int *) malloc((size_t) (n_eligible_case * sizeof(int)));
-  sample_eligible_cases = (int *) malloc((size_t) (n_eligible_case * sizeof(int)));
+  sample = (unsigned int *) malloc((size_t) (n_eligible_case * sizeof(unsigned int)));
+  sample_eligible_cases = (unsigned int *) malloc((size_t) (n_eligible_case * sizeof(unsigned int)));
   
   if(n_eligible_var_case > 0)
   {
