@@ -23,6 +23,6 @@ Go to https://www.bloodshed.net/ to download Dev-C++ 5. This is a great free C/C
 5.	Now you should see some buttons like Replace, Add etc. On top beside a text box you should see a button with the picture of a folder on it. Click on it.
 6.	It should open another dialog box where you can choose the folder which contain the library files. After selecting the folder click Ok. Then click Add in the first dialog box. Then Ok again.
 
-![image](https://github.com/yangyang-uf/TranStat/assets/25641021/5e9403eb-9da1-432a-8abd-68794f0c1664)
+
 
 For more information, contact Prof. Yang Yang at yy70876@uga.edu
